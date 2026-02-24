@@ -1,0 +1,16 @@
+# 환경 변수 (중요: GITHUB_TOKEN 등 민감 정보 포함)
+.env
+
+# 로그 파일
+*.log
+
+# Windows 임시 파일
+Thumbs.db
+Desktop.ini
+
+# IDE 설정 폴더 (VSCode, IntelliJ 등)
+.vscode/
+.idea/
+
+# 혹시 모를 로컬 테스트용 임시 폴더
+/temp/
