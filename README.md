@@ -29,3 +29,7 @@ bash scripts/run-daily.sh
 .\run_daily.ps1
 ```
 
+
+openclaw config set agents.defaults.model.primary "qwen-portal/vision-model"
+
+
