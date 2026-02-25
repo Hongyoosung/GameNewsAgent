@@ -1,35 +1,52 @@
 task: "daily-news"
 llm_config:
-  model: "qwen3:8b" # 설정하신 qwen3:8b 모델로 수정되었습니다.
-  base_url: "http://ollama:11434/v1"
+  model: "qwen-turbo" 
+  base_url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 tools:
   - news-summary:
-      sources: ["BBC", "Reuters", "The Verge", "IGN", "Ars Technica", "안랩", "연합뉴스"]
-      keywords: ["game development", "AI trends", "Unreal Engine", "reinforcement learning"]
-      count: 5
+      sources: ["Hacker News", "GameDeveloper.com", "Reddit r/gamedev", "Reddit r/MachineLearning", "GitHub Trending", "Unreal Engine Blog", "Ars Technica"]
+      keywords: ["game programming", "rendering engine", "LLM architecture", "machine learning", "Unreal Engine 5", "AI research"]
+      count: 10
 prompt: |
-  오늘 날짜는 {{date}}입니다. 반드시 최근 24시간 이내에 발행된 최신 뉴스만 정확히 5개 수집하세요.
+  오늘 날짜는 {{date}}입니다. 최근 24시간 이내에 발행된 최신 'IT 개발 및 AI 기술' 뉴스만 정확히 10개 수집하세요.
   
   [중요 규칙]
-  1. 기사의 원본 발행일을 반드시 확인하세요.
-  2. 어제 또는 그 이전에 발행된 과거 뉴스는 철저히 제외하세요.
-  3. 다른 매체에서 이미 어제 다뤘던 내용의 중복 기사도 제외하세요.
+  1. 타깃 독자는 '게임 클라이언트 프로그래머' 및 'AI 엔지니어'입니다. 
+  2. 🚫 절대 포함하지 말아야 할 뉴스:
+     - 게임 출시, 서비스 종료, 판매량, n주년 이벤트
+     - 기업 임원 교체, 스튜디오 인수합병 등 비즈니스 및 가십성 기사
+     - 단순 게임 플레이 리뷰나 e스포츠 소식
+  3. 🎯 반드시 포함해야 할 뉴스:
+     - 게임 엔진(Unreal, Unity 등)의 새로운 렌더링 기술, 업데이트, C++ 관련 이슈
+     - AI/ML 모델의 새로운 아키텍처, 논문(Paper) 발표, 오픈소스 LLM 동향
+     - 그래픽스 프로그래밍, 최적화 기법 등 실제 코드나 알고리즘과 관련된 트렌드
   
-  결과물은 블로그 포스팅용 마크다운 파일이어야 하며, 반드시 아래의 템플릿 형식을 엄격하게 지켜서 작성해야 합니다. 파일은 /app/output/{{date}}.md 경로에 저장하세요.
+  결과물은 블로그 포스팅용 마크다운 본문만 출력하세요. 추가 설명이나 코드 블록 기호(```markdown)는 절대 넣지 마세요.
   
-  ```markdown
   ---
-  title: "[오늘의 뉴스 요약을 바탕으로 매력적인 제목을 작성하세요]"
+  title: "[오늘의 기술 뉴스 요약을 바탕으로 매력적인 제목을 작성하세요]"
   date: {{date}}T09:00:00+09:00
   draft: false
-  description: "[수집된 뉴스들의 전반적인 핵심을 1-2줄로 요약한 설명을 작성하세요]"
-  tags: ["News", "Game Development", "AI Trends", "Unreal Engine"]
+  description: "[수집된 뉴스들의 핵심 기술 동향을 1-2줄로 요약하세요]"
+  tags: ["News", "Game Programming", "AI Trends", "Tech"]
   categories: ["Tech"]
   ---
   
-  최신 게임 개발 및 AI 동향을 전해드립니다. 오늘 수집된 주요 뉴스들을 확인해 보세요.
+  최신 게임 프로그래밍 및 AI 기술 동향을 전해드립니다.
   
-  ## 1. [첫 번째 뉴스 제목](링크)
-  {1-2줄 요약, 50자 이내, 핵심만 한국어로}
+  #### 1. [첫 번째 뉴스 제목](링크)
+  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
   
-  (이하 생략...)
+  #### 2. [두 번째 뉴스 제목](링크)
+  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
+  
+  #### 3. [세 번째 뉴스 제목](링크)
+  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
+  
+  #### 4. [네 번째 뉴스 제목](링크)
+  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
+  
+  #### 5. [다섯 번째 뉴스 제목](링크)
+  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
+
+  ... 10개까지.
