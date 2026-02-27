@@ -51,7 +51,7 @@ jobs:
             openclaw skills disable "$skill" || true
           done
           
-          for skill in logwatcher github summarize xurl; do
+          for skill in blogwatcher github summarize xurl; do
             openclaw skills enable "$skill" || true
           done
           
