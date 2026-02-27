@@ -6,7 +6,7 @@ tools:
   - news-summary:
       sources: ["Hacker News", "GameDeveloper.com", "Reddit r/gamedev", "Reddit r/MachineLearning", "GitHub Trending", "Unreal Engine Blog", "Ars Technica"]
       keywords: ["game programming", "rendering engine", "LLM architecture", "machine learning", "Unreal Engine 5", "AI research"]
-      count: 10
+      count: 5
 prompt: |
   오늘 날짜는 {{date}}입니다. 최근 24시간 이내에 발행된 최신 'IT 개발 및 AI 기술' 뉴스만 정확히 10개 수집하세요.
   
@@ -40,4 +40,4 @@ prompt: |
   #### 2. [두 번째 뉴스 제목](링크)
   {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
   
-  (이하 10개까지 동일한 포맷으로 작성)
+  (이하 5개까지 동일한 포맷으로 작성)
