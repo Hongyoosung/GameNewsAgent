@@ -1,6 +1,6 @@
 task: "daily-news"
 llm_config:
-  model: "gemini-2.5-flash" 
+  model: "openai/gemini-2.5-flash" 
   base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
 tools:
   - news-summary:
