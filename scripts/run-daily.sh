@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$BASE_DIR"
+BASEDIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$BASEDIR" || exit 1
 
-if [[ -f ".env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  . ".env"
-  set +a
+if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . .env
+    set +a
 else
-  echo "🚨 .env 파일을 찾을 수 없습니다." >&2
-  exit 1
+    echo ".env 파일이 없습니다." >&2
+    exit 1
 fi
+
 
 # 한국 시간 기준으로 날짜 설정 (GitHub Actions의 기본 UTC 방지)
 export TZ="Asia/Seoul"
