@@ -30,53 +30,30 @@ jobs:
       - name: Install OpenClaw
         run: npm install -g openclaw@latest
       
-      - name: Create .env
+      - name: Setup Environment & OpenClaw Auth
         working-directory: ./sourcerepo
         run: |
+          # 1. 올바른 .env 파일 생성 (언더스코어 포함)
           cat > .env << EOF
           GITHUB_TOKEN=${{ secrets.GH_PAT }}
           TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
-          REPO_PATH=./repo
-          OPENCLAW_CONFIG=./config
-          OPENCLAW_DAILY_JOB_ID=daily-news
-          CONTAINER_TIMEZONE=Asia/Seoul
           OPENAI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-          OPENCLAW_MODEL=openai/gemini-2.5-flash-exp
-          EOF
-      
-      - name: Setup OpenClaw (Gemini Only) & Clean Previous Config
-        run: |
-          # 1. 기존 OpenClaw 설정 완전 삭제
-          rm -rf .openclaw .npm/_npx/*
-          
-          # 2. Gemini 전용 환경변수 설정
-          export OPENCLAWCONFIG=config/daily-news-job.yaml
-          export OPENCLAWDAILYJOBID=daily-news
-          
-          # 3. .env 파일 (Gemini 설정)
-          cat > .env << EOF
-          GITHUBTOKEN=${{ secrets.GHPAT }}
-          TARGETREPOPATH=github.workspace/targetrepo
-          GEMINIAPIKEY=${{ secrets.GEMINIAPIKEY }}
-          OPENAIAPIKEY=${{ secrets.GEMINIAPIKEY }}
-          OPENAIBASEURL=https://generativelanguage.googleapis.com/v1beta
-          OPENCLAWMODEL=gemini-2.5-flash-exp
+          OPENCLAW_MODEL=gemini-2.5-flash-exp
           EOF
           
-          # 4. 최소한의 OpenClaw config (Anthropic 완전 배제)
-          mkdir -p .openclaw
-          cat > .openclaw/openclaw.json << EOF
+          # 2. 에러 로그가 요구하는 정확한 경로에 auth-profiles.json 생성
+          AUTH_DIR="/home/runner/.openclaw/agents/main/agent"
+          mkdir -p "$AUTH_DIR"
+          
+          # 3. Gemini를 OpenAI 호환 API로 사용하도록 인증 프로필 작성
+          cat > "$AUTH_DIR/auth-profiles.json" << EOF
           {
-            "models": {
-              "providers": {
-                "openai": {
-                  "apiKey": "\${GEMINIAPIKEY}",
-                  "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-                  "models": [{"id": "gemini-2.5-flash-exp"}]
-                }
-              }
-            }
+            "openai": {
+              "apiKey": "${{ secrets.GEMINI_API_KEY }}",
+              "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/"
+            },
+            "defaultProvider": "openai"
           }
           EOF
 

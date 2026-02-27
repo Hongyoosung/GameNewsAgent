@@ -1,6 +1,6 @@
 task: "daily-news"
 llm_config:
-  model: "google/gemini-2.5-flash-exp"
+  model: "gemini-2.5-flash-exp"
 tools:
   - news-summary:
       sources: ["Hacker News", "GameDeveloper.com", "Reddit r/gamedev", "Reddit r/MachineLearning", "GitHub Trending", "Unreal Engine Blog", "Ars Technica"]
