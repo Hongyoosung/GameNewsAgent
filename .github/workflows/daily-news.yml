@@ -41,12 +41,14 @@ jobs:
           EOF
           
           # 2. OpenClaw 글로벌 설정 및 인증 프로필 설정
-          # paste-token에는 --provider 옵션이 필수이며, 토큰은 표준 입력(pipe)으로 전달합니다.
+          # paste-token은 상호작용을 시도할 수 있으므로, CI 환경에서는 pipe(echo)를 사용하여 토큰을 전달합니다.
           echo "${{ secrets.GEMINI_API_KEY }}" | openclaw models auth paste-token --provider google
           
-          # 3. 'main' 에이전트 생성 및 모델 설정
-          # 'agents add'는 --model 옵션을 직접 지원하지 않으므로, 에이전트 생성 후 'models --agent' 명령어로 설정합니다.
-          openclaw agents add main --workspace .
+          # 모델 목록 최신화
+          openclaw models scan
+          
+          # 3. 'main' 에이전트 설정
+          # 'main' 에이전트는 기본적으로 존재하며 "reserved"된 이름이므로 'add' 대신 기존 에이전트의 모델을 변경합니다.
           openclaw models --agent main set google/gemini-3.0-flash
           
           # 4. 설정 확인 (디버깅용)
