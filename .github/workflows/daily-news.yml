@@ -37,13 +37,13 @@ jobs:
           cat > .env << EOF
           GITHUB_TOKEN=${{ secrets.GH_PAT }}
           TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
-          GOOGLE_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           EOF
           
           # 2. OpenClaw 글로벌 설정 및 인증 프로필 설정
           # openclaw scan은 OpenRouter 키를 요구하므로 생략합니다.
           # --no-color를 사용하여 CI 로그에서 토큰이 문자로 노출되는 애니메이션 효과를 방지합니다.
-          echo "${{ secrets.GEMINI_API_KEY }}" | openclaw --no-color models auth paste-token --provider google
+          echo "${{ secrets.GEMINI_API_KEY }}" | openclaw --no-color models --agent main auth paste-token --provider google
           
           # 3. 'main' 에이전트 설정
           # 'main' 에이전트는 예약된 이름이므로 기존 에이전트에 모델을 강제로 설정합니다.
