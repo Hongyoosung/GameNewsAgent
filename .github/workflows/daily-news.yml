@@ -49,15 +49,14 @@ jobs:
         run: |
           mkdir -p ~/.openclaw
           
-          # 1. 커스텀 모델 설정 파일 ("api" 값을 "openai-responses"로 수정!)
+          # 1. 네이티브 Gemini 규격으로 설정 파일 생성! (baseUrl 삭제, api 변경)
           cat > ~/.openclaw/openclaw.json << EOF
           {
             "models": {
               "mode": "merge",
               "providers": {
-                "openai": {
-                  "api": "openai-responses",
-                  "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+                "google": {
+                  "api": "google-generative-ai",
                   "apiKey": "${{ secrets.GEMINI_API_KEY }}",
                   "models": [
                     {
@@ -71,7 +70,7 @@ jobs:
             "agents": {
               "defaults": {
                 "model": {
-                  "primary": "openai/gemini-2.5-flash"
+                  "primary": "google/gemini-2.5-flash"
                 }
               }
             }
