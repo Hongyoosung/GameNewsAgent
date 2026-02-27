@@ -52,8 +52,16 @@ FINAL_MESSAGE="다음 작업 명세서의 지시사항을 수행하고, 최종 �
 [작업 명세서]
 $JOB_PROMPT"
 
-# openclaw 실행 (매일 달라지는 session-id 부여로 과거 기억 초기화)
-openclaw agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
+# 3. openclaw 실행 (환경에 맞게 실행 명령어 자동 탐색)
+if command -v openclaw &> /dev/null; then
+    OPENCLAW_CMD="openclaw"
+elif [[ -f "$HOME/.local/bin/openclaw" ]]; then
+    OPENCLAW_CMD="$HOME/.local/bin/openclaw"
+else
+    OPENCLAW_CMD="python -m openclaw"
+fi
+
+$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
 
 echo "[2/4] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
