@@ -35,7 +35,7 @@ echo "[1/4] OpenClaw 뉴스 수집 및 요약 프롬프트 준비..."
 JOB_PROMPT=$(sed "s/{{date}}/$DATE/g" "$BASE_DIR/config/daily-news-job.yaml")
 
 # OpenClaw에게 '타겟 리포지토리' 경로로 바로 저장하라고 지시
-FINAL_MESSAGE="다음 작업 명세서의 지시사항을 수행하고, 최종 결과물 마크다운을 반드시 다음 경로에 저장해줘: $TARGET_OUTPUT_FILE
+FINAL_MESSAGE="다음 작업 명세서의 지시사항을 수행하여 마크다운 본문만 작성해줘:
 
 [작업 명세서]
 $JOB_PROMPT"
@@ -47,8 +47,8 @@ else
 fi
 
 echo "[2/4] OpenClaw 실행 중..."
-# 수정됨: 가공된 $FINAL_MESSAGE를 명확히 전달
-$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
+
+$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE" > "$TARGET_OUTPUT_FILE"
 
 echo "[3/4] 타겟 리포지토리에 생성된 파일 확인..."
 if [[ ! -f "$TARGET_OUTPUT_FILE" ]]; then

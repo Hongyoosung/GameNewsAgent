@@ -27,7 +27,7 @@ prompt: |
   title: "[오늘의 기술 뉴스 요약을 바탕으로 매력적인 제목을 작성하세요]"
   date: {{date}}T09:00:00+09:00
   draft: false
-  description: "[수집된 뉴스들의 핵심 기술 동향을 1-2줄로 요약하세요]"
+  description: "[수집된 뉴스들의 핵심 기술 동향을 2-3줄로 요약하세요]"
   tags: ["News", "Game Programming", "AI Trends", "Tech"]
   categories: ["Tech"]
   ---
