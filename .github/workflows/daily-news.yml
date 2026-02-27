@@ -45,20 +45,18 @@ jobs:
           OPENCLAW_MODEL=openai/gemini-2.5-flash
           EOF
       
-      - name: Create OpenClaw Config & Dummy Auth
+      - name: Create OpenClaw Config for Gemini
         run: |
-          mkdir -p ~/.openclaw
-          
-          # 1. 네이티브 Gemini 규격으로 설정 파일 생성 (baseUrl 추가)
-          cat > ~/.openclaw/openclaw.json << EOF
+          mkdir -p .openclaw/agents/main/agent
+          cat > .openclaw/openclaw.json << EOF
           {
             "models": {
               "mode": "merge",
               "providers": {
                 "google": {
                   "api": "google-generative-ai",
-                  "apiKey": "${{ secrets.GEMINI_API_KEY }}",
-                  "baseUrl": "https://generativelanguage.googleapis.com",
+                  "apiKey": \${{ secrets.GEMINIAPIKEY }},
+                  "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
                   "models": [
                     {
                       "id": "gemini-2.5-flash",
@@ -77,16 +75,14 @@ jobs:
             }
           }
           EOF
-          
-          # 2. Anthropic 더미 키 생성 (초기화 에러 방지용)
-          mkdir -p ~/.openclaw/agents/main/agent
-          cat > ~/.openclaw/agents/main/agent/auth-profiles.json << EOF
+          cat > .openclaw/agents/main/agent/auth-profiles.json << EOF
           {
-            "anthropic": {
-              "apiKey": "dummy-key-to-bypass-check"
+            "google": {
+              "apiKey": \${{ secrets.GEMINIAPIKEY }}
             }
           }
           EOF
+
 
       - name: Configure Git for Target Repo
         working-directory: ./targetrepo
