@@ -50,4 +50,4 @@ jobs:
       
       - name: Run Daily Script
         working-directory: ./sourcerepo
-        run: bash run-daily.sh
+        run: bash scripts/run-daily.sh
