@@ -56,11 +56,11 @@ $JOB_PROMPT"
 if command -v openclaw &> /dev/null; then
     OPENCLAW_CMD="openclaw"
 else
-    # 전역 설치가 안 되었을 경우를 대비해 npx 시도
     OPENCLAW_CMD="npx openclaw"
 fi
 
-$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
+# --model 옵션을 추가하여 에이전트 프로필 기본값을 덮어씁니다.
+$OPENCLAW_CMD agent --local --agent main --model "openai/gemini-2.5-flash" --session-id "news-$DATE" --message "$FINAL_MESSAGE"
 
 echo "[2/4] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then

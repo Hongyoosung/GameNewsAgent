@@ -1,3 +1,5 @@
+# .github/workflows/daily-news.yml (전체 코드 중 steps 부분 수정)
+
 name: Daily News Automation
 on:
   schedule:
@@ -17,14 +19,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Hongyoosung/Hongyoosung.github.io
-          # 타 리포지토리 접근을 위해 Personal Access Token 필요
           token: ${{ secrets.GH_PAT }}
           path: targetrepo
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22' # OpenClaw 권장 버전
+          node-version: '22'
       
       - name: Install OpenClaw
         run: npm install -g openclaw@latest
@@ -40,6 +41,8 @@ jobs:
           OPENCLAW_DAILY_JOB_ID=daily-news
           CONTAINER_TIMEZONE=Asia/Seoul
           OPENAI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+          OPENCLAW_MODEL=openai/gemini-2.5-flash
           EOF
       
       - name: Configure Git for Target Repo
