@@ -45,6 +45,37 @@ jobs:
           OPENCLAW_MODEL=openai/gemini-2.5-flash
           EOF
       
+      - name: Create OpenClaw Config
+        working-directory: ./sourcerepo
+        run: |
+          mkdir -p ./config
+          cat > ./config/openclaw.json << EOF
+          {
+            "models": {
+              "mode": "merge",
+              "providers": {
+                "google-gemini": {
+                  "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+                  "api": "openai-completions",
+                  "apiKey": "${{ secrets.GEMINI_API_KEY }}",
+                  "models": [
+                    {
+                      "id": "gemini-2.5-flash",
+                      "name": "Gemini 2.5 Flash"
+                    }
+                  ]
+                }
+              }
+            },
+            "agents": {
+              "defaults": {
+                "model": {
+                  "primary": "google-gemini/gemini-2.5-flash"
+                }
+              }
+            }
+          }
+          EOF
 
       - name: Configure Git for Target Repo
         working-directory: ./targetrepo

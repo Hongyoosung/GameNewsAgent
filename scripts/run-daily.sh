@@ -56,12 +56,10 @@ $JOB_PROMPT"
 if command -v openclaw &> /dev/null; then
     OPENCLAW_CMD="openclaw"
 else
-    # 전역 설치가 안 되었을 경우를 대비해 npx 시도
     OPENCLAW_CMD="npx openclaw"
 fi
 
-echo "[2/5] 기본 AI 모델을 Gemini로 설정 후 실행..."
-$OPENCLAW_CMD models set "openai/gemini-2.5-flash"
+echo "[2/5] 실행..."
 $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
 
 
