@@ -1,7 +1,7 @@
 task: "daily-news"
 llm_config:
   provider: "google"
-  model: "gemini-3-pro-preview"
+  model: "gemini-3.1-pro-preview"
 tools:
   - news-summary:
       sources: ["Hacker News", "GitHub Trending", "Reddit r/MachineLearning"] 
