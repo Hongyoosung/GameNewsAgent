@@ -33,27 +33,35 @@ jobs:
       - name: Setup Environment & OpenClaw Auth
         working-directory: ./sourcerepo
         run: |
-          # 1. 올바른 .env 파일 생성 (언더스코어 포함)
+          # 1. .env 파일 생성 (Provider 명시적 추가)
           cat > .env << EOF
           GITHUB_TOKEN=${{ secrets.GH_PAT }}
           TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
           OPENAI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+          OPENCLAW_PROVIDER=openai
           OPENCLAW_MODEL=gemini-2.5-flash-exp
           EOF
           
-          # 2. 에러 로그가 요구하는 정확한 경로에 auth-profiles.json 생성
-          AUTH_DIR="/home/runner/.openclaw/agents/main/agent"
-          mkdir -p "$AUTH_DIR"
+          # 2. 에러 로그가 가리키는 정확한 에이전트 경로 생성
+          AGENT_DIR="/home/runner/.openclaw/agents/main/agent"
+          mkdir -p "$AGENT_DIR"
           
-          # 3. Gemini를 OpenAI 호환 API로 사용하도록 인증 프로필 작성
-          cat > "$AUTH_DIR/auth-profiles.json" << EOF
+          # 3. 인증 프로필(auth-profiles.json) 생성
+          cat > "$AGENT_DIR/auth-profiles.json" << EOF
           {
             "openai": {
               "apiKey": "${{ secrets.GEMINI_API_KEY }}",
               "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/"
-            },
-            "defaultProvider": "openai"
+            }
+          }
+          EOF
+          
+          # 4. 에이전트 기본 설정(agent.json)을 덮어써서 Anthropic 싹 자르기
+          cat > "$AGENT_DIR/agent.json" << EOF
+          {
+            "provider": "openai",
+            "model": "gemini-2.5-flash-exp"
           }
           EOF
 
