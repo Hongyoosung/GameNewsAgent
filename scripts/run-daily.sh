@@ -46,16 +46,36 @@ else
     OPENCLAW_CMD="npx openclaw"
 fi
 
-echo "[2/4] OpenClaw 실행 중..."
+echo "[2/4] OpenClaw 실행 중 (API 제한 대응 로직 포함)..."
 
-$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE" > "$TARGET_OUTPUT_FILE"
+max_api_retries=3
+api_retry_count=0
+api_success=false
 
-echo "[3/4] 타겟 리포지토리에 생성된 파일 확인..."
-if [[ ! -f "$TARGET_OUTPUT_FILE" ]]; then
-  echo "🚨 결과물 파일이 생성되지 않았습니다: $TARGET_OUTPUT_FILE" >&2
-  exit 1
-else
-  echo "✅ 파일 생성 완료: $TARGET_OUTPUT_FILE"
+while [[ $api_retry_count -lt $max_api_retries && $api_success == false ]]; do
+    echo "시도 $((api_retry_count + 1))/$max_api_retries: OpenClaw 에이전트 구동..."
+    
+    # 실행 결과를 임시 파일에 저장하여 에러 여부 확인
+    if $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE" > "$TARGET_OUTPUT_FILE" 2>&1; then
+        # 출력 내용에 API 에러 메시지가 있는지 검사
+        if grep -qE "429|RESOURCE_EXHAUSTED|rate limit reached" "$TARGET_OUTPUT_FILE"; then
+            echo "⚠️ API 할당량 초과 감지. 60초 후 재시도합니다..."
+            api_retry_count=$((api_retry_count + 1))
+            sleep 62  # 1분 제한이므로 여유 있게 62초 대기
+        else
+            api_success=true
+            echo "✅ OpenClaw 실행 성공!"
+        fi
+    else
+        echo "⚠️ OpenClaw 실행 중 시스템 오류 발생. 60초 후 재시도합니다..."
+        api_retry_count=$((api_retry_count + 1))
+        sleep 62
+    fi
+done
+
+if [[ $api_success == false ]]; then
+    echo "🚨 API 제한으로 인해 OpenClaw 실행에 최종 실패했습니다." >&2
+    exit 1
 fi
 
 echo "[4/4] GitHub 커밋 및 푸시..."
