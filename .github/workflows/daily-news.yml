@@ -60,8 +60,10 @@ jobs:
           # 4. 에이전트 기본 설정(agent.json)을 덮어써서 Anthropic 싹 자르기
           cat > "$AGENT_DIR/agent.json" << EOF
           {
-            "provider": "openai",
-            "model": "gemini-2.5-flash-exp"
+            "llm_config": {
+              "provider": "openai",
+              "model": "gemini-2.5-flash-exp"
+            }
           }
           EOF
 
