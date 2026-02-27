@@ -47,11 +47,13 @@ jobs:
           openclaw --no-color models --agent main set google/gemini-2.5-flash
           
           # 4. 스킬 관리
-          # 사용하지 않는 스킬 비활성화
-          openclaw --no-color skills disable 1password apple-notes discord slack weather healthcheck gemini
+          for skill in 1password apple-notes discord slack weather healthcheck gemini coding-agent nano-banana-pro openai-whisper-api skill-creator video-frames; do
+            openclaw skills disable "$skill" || true
+          done
           
-          # logwatcher, github, summarize, xurl 활성화
-          openclaw --no-color skills enable logwatcher github summarize xurl
+          for skill in logwatcher github summarize xurl; do
+            openclaw skills enable "$skill" || true
+          done
           
           # 설정 반영을 위한 재시작
           openclaw --no-color restart
