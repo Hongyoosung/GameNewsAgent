@@ -38,14 +38,13 @@ jobs:
           GITHUB_TOKEN=${{ secrets.GH_PAT }}
           TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
           EOF
           
           # 2. OpenClaw 인증 설정
-          echo "${{ secrets.OPENROUTER_API_KEY }}" | openclaw --no-color models --agent main auth paste-token --provider openrouter
+          echo "${{ secrets.GEMINI_API_KEY }}" | openclaw --no-color models --agent main auth paste-token --provider google
           
           # 3. 'main' 에이전트 모델 설정
-          openclaw --no-color models --agent main set openrouter/qwen/qwen3.5-35b-a3b
+          openclaw --no-color models --agent main set google/gemini-2.5-flash
           
           # 4. 스킬 관리
           for skill in 1password apple-notes discord slack weather healthcheck gemini coding-agent nano-banana-pro openai-whisper-api skill-creator video-frames; do
