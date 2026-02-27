@@ -49,13 +49,14 @@ jobs:
         run: |
           mkdir -p ~/.openclaw
           
-          # 1. 커스텀 모델 설정 파일 (openai provider를 덮어써서 Gemini로 연결)
+          # 1. 커스텀 모델 설정 파일 ("api": "openai" 필드 추가!)
           cat > ~/.openclaw/openclaw.json << EOF
           {
             "models": {
               "mode": "merge",
               "providers": {
                 "openai": {
+                  "api": "openai",
                   "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
                   "apiKey": "${{ secrets.GEMINI_API_KEY }}",
                   "models": [
