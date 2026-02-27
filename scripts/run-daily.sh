@@ -43,7 +43,7 @@ TARGET_DAILY_DIR="$TARGET_REPO_PATH/content/journal"
 TARGET_FILE_NAME="${DATE}_news.ko.md"
 TARGET_OUTPUT_FILE="$TARGET_DAILY_DIR/$TARGET_FILE_NAME"
 
-echo "[1/4] OpenClaw 뉴스 수집 및 요약 실행..."
+echo "[1/5] OpenClaw 뉴스 수집 및 요약 실행..."
 
 JOB_PROMPT=$(sed "s/{{date}}/$DATE/g" "$BASE_DIR/config/daily-news-job.yaml")
 
@@ -60,9 +60,12 @@ else
     OPENCLAW_CMD="npx openclaw"
 fi
 
+echo "[2/5] 기본 AI 모델을 Gemini로 설정 후 실행..."
+$OPENCLAW_CMD models set "openai/gemini-2.5-flash"
 $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
 
-echo "[2/4] 로컬에 생성된 파일 확인..."
+
+echo "[3/5] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
   echo "🚨 로컬 output 폴더에 오늘자 MD 파일이 생성되지 않았습니다." >&2
   exit 1
@@ -70,12 +73,12 @@ else
   echo "✅ 로컬 파일 생성 확인됨: $LOCAL_OUTPUT_FILE"
 fi
 
-echo "[3/4] 블로그 리포지토리로 파일 복사..."
+echo "[4/5] 블로그 리포지토리로 파일 복사..."
 mkdir -p "$TARGET_DAILY_DIR"
 cp -f "$LOCAL_OUTPUT_FILE" "$TARGET_OUTPUT_FILE"
 echo "✅ 파일 복사 완료: $TARGET_OUTPUT_FILE"
 
-echo "[4/4] GitHub 커밋 및 푸시..."
+echo "[5/5] GitHub 커밋 및 푸시..."
 cd "$TARGET_REPO_PATH"
 
 git add "content/journal/$TARGET_FILE_NAME" || true
