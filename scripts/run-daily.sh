@@ -61,7 +61,7 @@ fi
 
 echo "[2/5] 실행..."
 # $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
-npx openclaw agent --local --message "config/daily-news-job.yaml을 실행해 오늘자 뉴스 요약을 만들어줘. 날짜: $DATE" --verbose
+npx openclaw agent --local --message "config/daily-news-job.yaml을 실행해 오늘자 뉴스 요약을 만들어줘. 날짜: $DATE"
 
 echo "[3/5] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
