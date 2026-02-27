@@ -42,12 +42,13 @@ jobs:
           CONTAINER_TIMEZONE=Asia/Seoul
           OPENAI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-          OPENCLAW_MODEL=openai/gemini-2.5-flash
+          OPENCLAW_MODEL=openai/gemini-2.5-flash-exp
           EOF
       
-      - name: Create OpenClaw Config for Gemini
+      - name: Setup OpenClaw Config for Gemini Only
         run: |
           mkdir -p .openclaw/agents/main/agent
+          # Global config: Gemini provider only
           cat > .openclaw/openclaw.json << EOF
           {
             "models": {
@@ -59,7 +60,7 @@ jobs:
                   "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
                   "models": [
                     {
-                      "id": "gemini-2.5-flash",
+                      "id": "gemini-2.5-flash-exp",
                       "name": "Gemini 2.5 Flash"
                     }
                   ]
@@ -69,12 +70,17 @@ jobs:
             "agents": {
               "defaults": {
                 "model": {
-                  "primary": "google/gemini-2.5-flash"
+                  "primary": "google/gemini-2.5-flash-exp"
                 }
               }
             }
           }
           EOF
+          # Agent-specific auth: Gemini only, NO anthropic
+          cat > .openclaw/agents/main/agent/auth-profiles.json << EOF
+          {}
+          EOF
+          # Or explicitly Gemini profile
           cat > .openclaw/agents/main/agent/auth-profiles.json << EOF
           {
             "google": {
@@ -82,6 +88,7 @@ jobs:
             }
           }
           EOF
+
 
 
       - name: Configure Git for Target Repo
