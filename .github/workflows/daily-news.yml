@@ -1,0 +1,53 @@
+name: Daily News Automation
+on:
+  schedule:
+    - cron: '0 0 * * *'  # UTC 00:00 -> KST 09:00
+  workflow_dispatch:  # 수동 실행 버튼 활성화
+
+jobs:
+  run-daily-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repo
+        uses: actions/checkout@v4
+        with:
+          path: sourcerepo
+      
+      - name: Checkout Target Repo (Blog)
+        uses: actions/checkout@v4
+        with:
+          repository: Hongyoosung/Hongyoosung.github.io
+          # 타 리포지토리 접근을 위해 Personal Access Token 필요
+          token: ${{ secrets.GH_PAT }}
+          path: targetrepo
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install OpenClaw
+        run: pip install openclaw
+      
+      - name: Create .env
+        working-directory: ./sourcerepo
+        run: |
+          cat > .env << EOF
+          GITHUB_TOKEN=${{ secrets.GH_PAT }}
+          TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
+          REPO_PATH=./repo
+          OPENCLAW_CONFIG=./config
+          OPENCLAW_DAILY_JOB_ID=daily-news
+          CONTAINER_TIMEZONE=Asia/Seoul
+          OPENAI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          EOF
+      
+      - name: Configure Git for Target Repo
+        working-directory: ./targetrepo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Run Daily Script
+        working-directory: ./sourcerepo
+        run: bash run-daily.sh

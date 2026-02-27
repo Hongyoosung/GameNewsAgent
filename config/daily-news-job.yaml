@@ -1,7 +1,7 @@
 task: "daily-news"
 llm_config:
-  model: "qwen-turbo" 
-  base_url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+  model: "gemini-2.5-flash" 
+  base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
 tools:
   - news-summary:
       sources: ["Hacker News", "GameDeveloper.com", "Reddit r/gamedev", "Reddit r/MachineLearning", "GitHub Trending", "Unreal Engine Blog", "Ars Technica"]
@@ -40,13 +40,4 @@ prompt: |
   #### 2. [두 번째 뉴스 제목](링크)
   {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
   
-  #### 3. [세 번째 뉴스 제목](링크)
-  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
-  
-  #### 4. [네 번째 뉴스 제목](링크)
-  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
-  
-  #### 5. [다섯 번째 뉴스 제목](링크)
-  {3줄 요약, 50자 이내, 기술적 핵심만 한국어로}
-
-  ... 10개까지.
+  (이하 10개까지 동일한 포맷으로 작성)

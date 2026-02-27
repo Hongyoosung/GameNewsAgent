@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BASE_DIR="$SCRIPT_DIR"
 cd "$BASE_DIR"
 
 if [[ -f ".env" ]]; then
@@ -16,7 +16,10 @@ else
   exit 1
 fi
 
+# 한국 시간 기준으로 날짜 설정 (GitHub Actions의 기본 UTC 방지)
+export TZ="Asia/Seoul"
 DATE="$(date +%F)"
+mkdir -p "$BASE_DIR/output"
 LOCAL_OUTPUT_FILE="$BASE_DIR/output/${DATE}.md"
 
 if [[ -z "${TARGET_REPO_PATH:-}" ]]; then
@@ -24,8 +27,8 @@ if [[ -z "${TARGET_REPO_PATH:-}" ]]; then
   exit 1
 fi
 
+# Windows Git Bash 환경을 위한 경로 변환
 TARGET_REPO_PATH_RAW="$TARGET_REPO_PATH"
-
 if [[ "$TARGET_REPO_PATH_RAW" =~ ^([A-Za-z]):[/\\](.*) ]]; then
   drive_letter="${BASH_REMATCH[1]}"
   rest="${BASH_REMATCH[2]}"
@@ -42,28 +45,22 @@ TARGET_OUTPUT_FILE="$TARGET_DAILY_DIR/$TARGET_FILE_NAME"
 
 echo "[1/4] OpenClaw 뉴스 수집 및 요약 실행..."
 
-# 1. yaml 파일 경로에 'config/'를 추가하여 정확한 위치를 지정합니다.
 JOB_PROMPT=$(sed "s/{{date}}/$DATE/g" "$BASE_DIR/config/daily-news-job.yaml")
 
-# 2. 에이전트에게 명확하게 지시할 최종 메시지를 구성합니다.
 FINAL_MESSAGE="다음 작업 명세서의 지시사항을 수행하고, 최종 결과물 마크다운을 반드시 다음 로컬 경로에 저장해줘: $LOCAL_OUTPUT_FILE
 
 [작업 명세서]
 $JOB_PROMPT"
 
-# 3. openclaw 실행 (매일 달라지는 session-id 부여로 과거 기억 초기화)
+# openclaw 실행 (매일 달라지는 session-id 부여로 과거 기억 초기화)
 openclaw agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
-
-# 3. openclaw 실행 (핵심: 매일 달라지는 session-id 부여로 과거 기억 초기화)
-openclaw agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
-
 
 echo "[2/4] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
   echo "🚨 로컬 output 폴더에 오늘자 MD 파일이 생성되지 않았습니다." >&2
   exit 1
 else
-  echo "✅ 로컬 파일 생성 확인됨."
+  echo "✅ 로컬 파일 생성 확인됨: $LOCAL_OUTPUT_FILE"
 fi
 
 echo "[3/4] 블로그 리포지토리로 파일 복사..."
@@ -74,7 +71,6 @@ echo "✅ 파일 복사 완료: $TARGET_OUTPUT_FILE"
 echo "[4/4] GitHub 커밋 및 푸시..."
 cd "$TARGET_REPO_PATH"
 
-
 git add "content/journal/$TARGET_FILE_NAME" || true
 
 if git diff --cached --quiet; then
@@ -82,7 +78,7 @@ if git diff --cached --quiet; then
   exit 0
 fi
 
-git commit -m "Daily News Update ${DATE}"
+git commit -m "docs: Daily News Update ${DATE}"
 
 retry_count=0
 max_retries=3
