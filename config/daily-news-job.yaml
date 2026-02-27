@@ -4,11 +4,11 @@ llm_config:
   model: "gemini-3-pro-preview"
 tools:
   - news-summary:
-      sources: ["Hacker News", "GameDeveloper.com", "Reddit r/gamedev", "Reddit r/MachineLearning", "GitHub Trending", "Unreal Engine Blog", "Ars Technica"]
+      sources: ["Hacker News", "GitHub Trending", "Reddit r/MachineLearning"] 
       keywords: ["game programming", "rendering engine", "LLM architecture", "machine learning", "Unreal Engine 5", "AI research"]
       count: 5
 prompt: |
-  오늘 날짜는 {{date}}입니다. 최근 24시간 이내에 발행된 최신 'IT 개발 및 AI 기술' 뉴스만 정확히 10개 수집하세요.
+  오늘 날짜는 {{date}}입니다. 최근 24시간 이내에 발행된 최신 'IT 개발 및 AI 기술' 뉴스만 정확히 5개 수집하세요.
   
   [중요 규칙]
   1. 타깃 독자는 '게임 클라이언트 프로그래머' 및 'AI 엔지니어'입니다. 
