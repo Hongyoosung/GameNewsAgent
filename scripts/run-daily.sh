@@ -55,10 +55,9 @@ $JOB_PROMPT"
 # 3. openclaw 실행 (환경에 맞게 실행 명령어 자동 탐색)
 if command -v openclaw &> /dev/null; then
     OPENCLAW_CMD="openclaw"
-elif [[ -f "$HOME/.local/bin/openclaw" ]]; then
-    OPENCLAW_CMD="$HOME/.local/bin/openclaw"
 else
-    OPENCLAW_CMD="python -m openclaw"
+    # 전역 설치가 안 되었을 경우를 대비해 npx 시도
+    OPENCLAW_CMD="npx openclaw"
 fi
 
 $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"

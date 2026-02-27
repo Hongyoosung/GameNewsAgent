@@ -21,13 +21,13 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           path: targetrepo
       
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.10'
+          node-version: '22' # OpenClaw 권장 버전
       
       - name: Install OpenClaw
-        run: pip install openclaw
+        run: npm install -g openclaw@latest
       
       - name: Create .env
         working-directory: ./sourcerepo
