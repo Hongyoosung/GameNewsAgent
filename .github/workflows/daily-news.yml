@@ -45,11 +45,13 @@ jobs:
           OPENCLAW_MODEL=openai/gemini-2.5-flash
           EOF
       
-      - name: Create OpenClaw Config
-        working-directory: ./sourcerepo
+      - name: Create OpenClaw Config & Dummy Auth
         run: |
-          mkdir -p ./config
-          cat > ./config/openclaw.json << EOF
+          # 1. OpenClaw의 기본 설정 디렉토리 생성
+          mkdir -p ~/.openclaw
+          
+          # 2. 커스텀 모델(Gemini) 설정 파일 생성 (올바른 경로에 배치)
+          cat > ~/.openclaw/openclaw.json << EOF
           {
             "models": {
               "mode": "merge",
@@ -73,6 +75,16 @@ jobs:
                   "primary": "google-gemini/gemini-2.5-flash"
                 }
               }
+            }
+          }
+          EOF
+          
+          # 3. 만약을 대비한 Anthropic 더미(Dummy) 키 생성 (초기화 에러 완벽 우회)
+          mkdir -p ~/.openclaw/agents/main/agent
+          cat > ~/.openclaw/agents/main/agent/auth-profiles.json << EOF
+          {
+            "anthropic": {
+              "apiKey": "dummy-key-to-bypass-check"
             }
           }
           EOF
