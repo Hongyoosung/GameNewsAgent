@@ -4,15 +4,15 @@ llm_config:
   model: "gemini-2.5-flash"
 tools:
   - blogwatcher
+  - summarize  
 prompt: |
   오늘 날짜는 {{date}}입니다. 
   
   [정보 수집 지시사항]
-  먼저 'blogwatcher' 스킬을 사용하여 아래의 RSS 피드 링크들을 읽어오세요. 
-  수집한 실제 데이터를 바탕으로 최근 24시간 이내에 발행된 최신 'IT 개발 및 AI 기술' 뉴스만 정확히 5개 선별해야 합니다.
-  
-  - Hacker News RSS: https://news.ycombinator.com/rss
-  - Reddit r/MachineLearning RSS: https://www.reddit.com/r/MachineLearning/new/.rss
+  1. 먼저 'blogwatcher' 스킬을 사용하여 아래의 RSS 피드 링크들을 읽어오세요.
+     - Hacker News RSS: https://news.ycombinator.com/rss
+     - Reddit r/MachineLearning RSS: https://www.reddit.com/r/MachineLearning/new/.rss
+  2. 선별된 기사의 실제 링크를 'summarize' 스킬에 전달하여 본문을 깊이 있게 분석한 뒤, 최근 24시간 이내에 발행된 최신 'IT 개발 및 AI 기술' 뉴스만 정확히 5개 선별하세요.
   
   [중요 규칙]
   1. 타깃 독자는 '게임 클라이언트 프로그래머' 및 'AI 엔지니어'입니다. 
