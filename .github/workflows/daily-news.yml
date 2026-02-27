@@ -49,14 +49,14 @@ jobs:
         run: |
           mkdir -p ~/.openclaw
           
-          # 1. 커스텀 모델 설정 파일 ("api": "openai" 필드 추가!)
+          # 1. 커스텀 모델 설정 파일 ("api" 값을 "openai-responses"로 수정!)
           cat > ~/.openclaw/openclaw.json << EOF
           {
             "models": {
               "mode": "merge",
               "providers": {
                 "openai": {
-                  "api": "openai",
+                  "api": "openai-responses",
                   "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
                   "apiKey": "${{ secrets.GEMINI_API_KEY }}",
                   "models": [
