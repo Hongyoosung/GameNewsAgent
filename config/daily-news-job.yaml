@@ -1,7 +1,7 @@
 task: "daily-news"
 llm_config:
-  provider: "openai"
-  model: "gemini-2.5-flash-exp"
+  provider: "google"
+  model: "gemini-3.0-flash"
 tools:
   - news-summary:
       sources: ["Hacker News", "GameDeveloper.com", "Reddit r/gamedev", "Reddit r/MachineLearning", "GitHub Trending", "Unreal Engine Blog", "Ars Technica"]

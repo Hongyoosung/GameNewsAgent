@@ -33,39 +33,25 @@ jobs:
       - name: Setup Environment & OpenClaw Auth
         working-directory: ./sourcerepo
         run: |
-          # 1. .env 파일 생성 (Provider 명시적 추가)
+          # 1. .env 파일 생성 (Target Repo 경로만 설정)
           cat > .env << EOF
           GITHUB_TOKEN=${{ secrets.GH_PAT }}
           TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
-          OPENAI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-          OPENCLAW_PROVIDER=openai
-          OPENCLAW_MODEL=gemini-2.5-flash-exp
+          GOOGLE_API_KEY=${{ secrets.GEMINI_API_KEY }}
           EOF
           
-          # 2. 에러 로그가 가리키는 정확한 에이전트 경로 생성
-          AGENT_DIR="/home/runner/.openclaw/agents/main/agent"
-          mkdir -p "$AGENT_DIR"
+          # 2. OpenClaw 글로벌 설정 및 인증 프로필 설정
+          # (파일 수동 생성 대신 CLI를 사용하여 설정 경로 및 권한 문제 방지)
+          openclaw models auth paste-token google "${{ secrets.GEMINI_API_KEY }}"
+          openclaw models set google/gemini-3.0-flash
           
-          # 3. 인증 프로필(auth-profiles.json) 생성
-          cat > "$AGENT_DIR/auth-profiles.json" << EOF
-          {
-            "openai": {
-              "apiKey": "${{ secrets.GEMINI_API_KEY }}",
-              "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/"
-            }
-          }
-          EOF
+          # 3. 'main' 에이전트 생성 및 설정
+          # 에러 로그에 따라 'main' 에이전트가 Anthropic을 찾는 문제를 해결하기 위해 명시적으로 생성
+          openclaw agents add main --model google/gemini-3.0-flash --workspace .
           
-          # 4. 에이전트 기본 설정(agent.json)을 덮어써서 Anthropic 싹 자르기
-          cat > "$AGENT_DIR/agent.json" << EOF
-          {
-            "llm_config": {
-              "provider": "openai",
-              "model": "gemini-2.5-flash-exp"
-            }
-          }
-          EOF
+          # 4. 설정 확인 (디버깅용)
+          openclaw models status
+          openclaw models status --agent main
 
 
 
