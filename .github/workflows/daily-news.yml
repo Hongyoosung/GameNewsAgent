@@ -56,7 +56,7 @@ jobs:
           done
           
           # 설정 반영을 위한 재시작
-          openclaw --no-color restart
+          openclaw --no-color reset
           
           # 5. 설정 확인 (디버깅용)
           openclaw --no-color models status
