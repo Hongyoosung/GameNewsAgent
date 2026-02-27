@@ -60,8 +60,14 @@ else
 fi
 
 echo "[2/5] 실행..."
+if command -v openclaw >/dev/null; then
+    OPENCLAW_CMD=openclaw
+else
+    OPENCLAW_CMD="npx openclaw"
+fi
+
 # $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
-npx openclaw agent --local --message "config/daily-news-job.yaml을 실행해 오늘자 뉴스 요약을 만들어줘. 날짜: $DATE"
+$OPENCLAW_CMD agent --local --message "config/daily-news-job.yaml을 실행해 오늘자 뉴스 요약을 만들어줘. 날짜: $DATE. output/$DATE.md에 한국어로 저장해줘."
 
 echo "[3/5] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
