@@ -45,49 +45,41 @@ jobs:
           OPENCLAW_MODEL=openai/gemini-2.5-flash-exp
           EOF
       
-      - name: Setup OpenClaw Config for Gemini Only
+      - name: Setup OpenClaw (Gemini Only) & Clean Previous Config
         run: |
-          mkdir -p .openclaw/agents/main/agent
-          # Global config: Gemini provider only
+          # 1. 기존 OpenClaw 설정 완전 삭제
+          rm -rf .openclaw .npm/_npx/*
+          
+          # 2. Gemini 전용 환경변수 설정
+          export OPENCLAWCONFIG=config/daily-news-job.yaml
+          export OPENCLAWDAILYJOBID=daily-news
+          
+          # 3. .env 파일 (Gemini 설정)
+          cat > .env << EOF
+          GITHUBTOKEN=${{ secrets.GHPAT }}
+          TARGETREPOPATH=github.workspace/targetrepo
+          GEMINIAPIKEY=${{ secrets.GEMINIAPIKEY }}
+          OPENAIAPIKEY=${{ secrets.GEMINIAPIKEY }}
+          OPENAIBASEURL=https://generativelanguage.googleapis.com/v1beta
+          OPENCLAWMODEL=gemini-2.5-flash-exp
+          EOF
+          
+          # 4. 최소한의 OpenClaw config (Anthropic 완전 배제)
+          mkdir -p .openclaw
           cat > .openclaw/openclaw.json << EOF
           {
             "models": {
-              "mode": "merge",
               "providers": {
-                "google": {
-                  "api": "google-generative-ai",
-                  "apiKey": \${{ secrets.GEMINIAPIKEY }},
+                "openai": {
+                  "apiKey": "\${GEMINIAPIKEY}",
                   "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-                  "models": [
-                    {
-                      "id": "gemini-2.5-flash-exp",
-                      "name": "Gemini 2.5 Flash"
-                    }
-                  ]
-                }
-              }
-            },
-            "agents": {
-              "defaults": {
-                "model": {
-                  "primary": "google/gemini-2.5-flash-exp"
+                  "models": [{"id": "gemini-2.5-flash-exp"}]
                 }
               }
             }
           }
           EOF
-          # Agent-specific auth: Gemini only, NO anthropic
-          cat > .openclaw/agents/main/agent/auth-profiles.json << EOF
-          {}
-          EOF
-          # Or explicitly Gemini profile
-          cat > .openclaw/agents/main/agent/auth-profiles.json << EOF
-          {
-            "google": {
-              "apiKey": \${{ secrets.GEMINIAPIKEY }}
-            }
-          }
-          EOF
+
 
 
 

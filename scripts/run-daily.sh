@@ -60,8 +60,8 @@ else
 fi
 
 echo "[2/5] 실행..."
-$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
-
+# $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
+npx openclaw run "$BASEDIR/config/daily-news-job.yaml" --date "$DATE"
 
 echo "[3/5] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
