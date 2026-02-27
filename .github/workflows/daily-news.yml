@@ -1,76 +1,50 @@
-# .github/workflows/daily-news.yml (전체 코드 중 steps 부분 수정)
-
-name: Daily News Automation
-on:
-  schedule:
-    - cron: '0 0 * * *'  # UTC 00:00 -> KST 09:00
-  workflow_dispatch:  # 수동 실행 버튼 활성화
-
-jobs:
-  run-daily-news:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source Repo
-        uses: actions/checkout@v4
-        with:
-          path: sourcerepo
-      
-      - name: Checkout Target Repo (Blog)
-        uses: actions/checkout@v4
-        with:
-          repository: Hongyoosung/Hongyoosung.github.io
-          token: ${{ secrets.GH_PAT }}
-          path: targetrepo
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      
-      - name: Install OpenClaw
-        run: npm install -g openclaw@latest
-      
-      - name: Setup Environment & OpenClaw Auth
-        working-directory: ./sourcerepo
-        run: |
-          # 1. .env 파일 생성
-          cat > .env << EOF
-          GITHUB_TOKEN=${{ secrets.GH_PAT }}
-          TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
-          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          EOF
-          
-          # 2. OpenClaw 인증 설정
-          echo "${{ secrets.GEMINI_API_KEY }}" | openclaw --no-color models --agent main auth paste-token --provider google
-          
-          # 3. 'main' 에이전트 모델 설정
-          openclaw --no-color models --agent main set google/gemini-2.5-flash
-          
-          # 4. 스킬 관리
-          for skill in 1password apple-notes discord slack weather healthcheck gemini coding-agent nano-banana-pro openai-whisper-api skill-creator video-frames; do
-            openclaw skills disable "$skill" || true
-          done
-          
-          for skill in blogwatcher github summarize xurl; do
-            openclaw skills enable "$skill" || true
-          done
-          
-          # 설정 반영을 위한 재시작
-          openclaw --no-color reset
-          
-          # 5. 설정 확인 (디버깅용)
-          openclaw --no-color models status
-          openclaw --no-color models status --agent main
-
-
-
-
-      - name: Configure Git for Target Repo
-        working-directory: ./targetrepo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-      - name: Run Daily Script
-        working-directory: ./sourcerepo
-        run: bash scripts/run-daily.sh
+task: "daily-news"
+llm_config:
+  provider: "google"
+  model: "gemini-2.5-flash"
+tools:
+  - blogwatcher
+  - summarize 
+prompt: |
+  오늘 날짜는 {{date}}입니다. 
+  
+  [정보 수집 지시사항]
+  1. 먼저 'blogwatcher' 스킬을 사용하여 아래의 RSS 피드 링크들을 읽어오세요.
+     - Hacker News RSS: https://news.ycombinator.com/rss
+     - Reddit r/MachineLearning RSS: https://www.reddit.com/r/MachineLearning/new/.rss
+  2. 선별된 기사의 실제 링크를 'summarize' 스킬에 전달하여 본문을 깊이 있게 분석한 뒤, 최근 24시간 이내에 발행된 최신 'IT 개발 및 AI 기술' 뉴스만 정확히 5개 선별하세요.
+  
+  [중요 규칙]
+  1. 타깃 독자는 '게임 클라이언트 프로그래머' 및 'AI 엔지니어'입니다. 
+  2. 🚫 절대 포함하지 말아야 할 뉴스:
+     - 게임 출시, 서비스 종료, 판매량, n주년 이벤트
+     - 기업 임원 교체, 스튜디오 인수합병 등 비즈니스 및 가십성 기사
+     - 단순 게임 플레이 리뷰나 e스포츠 소식
+  3. 🎯 반드시 포함해야 할 뉴스:
+     - 게임 엔진(Unreal, Unity 등)의 새로운 렌더링 기술, 업데이트, C++ 관련 이슈
+     - AI/ML 모델의 새로운 아키텍처, 논문(Paper) 발표, 오픈소스 LLM 동향
+     - 그래픽스 프로그래밍, 최적화 기법 등 실제 코드나 알고리즘과 관련된 트렌드
+  
+  [출력 형식]
+  결과물은 블로그 포스팅용 마크다운 본문만 출력하세요. 
+  수집한 실제 기사의 URL을 반드시 링크로 포함해야 합니다. (절대로 'example domain' 같은 가짜 링크를 생성하지 마세요)
+  추가 설명이나 코드 블록 기호(```markdown)는 절대 넣지 마세요.
+  
+  ---
+  title: "[수집된 실제 뉴스를 바탕으로 매력적인 제목 작성]"
+  date: {{date}}T09:00:00+09:00
+  draft: false
+  description: "[수집된 뉴스들의 핵심 기술 동향 2-3줄 요약]"
+  tags: ["News", "Game Programming", "AI Trends", "Tech"]
+  categories: ["Tech"]
+  ---
+  
+  최신 게임 프로그래밍 및 AI 기술 동향을 전해드립니다.
+  
+  #### 1. [실제 기사 제목](실제 링크)
+  * **핵심 내용:** (기사의 주요 기술적 성과를 1줄로 요약)
+  * **기술적 의미:** (게임 개발 또는 AI 연구에 미치는 영향을 1줄로 요약)
+  * **활용 방안:** (실무에서 어떻게 적용될 수 있는지 1줄로 요약)
+  
+  #### 2. [두 번째 기사 제목](실제 링크)
+  ... (이하 5개까지 동일한 포맷으로 작성)
