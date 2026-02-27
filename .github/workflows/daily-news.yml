@@ -45,6 +45,22 @@ jobs:
           OPENCLAW_MODEL=openai/gemini-2.5-flash
           EOF
       
+      - name: Create OpenClaw Config
+        working-directory: ./sourcerepo
+        run: |
+          mkdir -p ./config
+          cat > ./config/openclaw.json << EOF
+          {
+            "agents": {
+              "defaults": {
+                "model": {
+                  "primary": "openai/gemini-2.5-flash"
+                }
+              }
+            }
+          }
+          EOF
+
       - name: Configure Git for Target Repo
         working-directory: ./targetrepo
         run: |
