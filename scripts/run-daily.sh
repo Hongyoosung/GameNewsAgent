@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASEDIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$BASEDIR" || exit 1
+BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$BASE_DIR" || exit 1
 
 if [ -f .env ]; then
     set -a
@@ -61,7 +61,7 @@ fi
 
 echo "[2/5] 실행..."
 # $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
-npx openclaw run "$BASEDIR/config/daily-news-job.yaml" --date "$DATE"
+npx openclaw run "$BASE_DIR/config/daily-news-job.yaml" --date "$DATE"
 
 echo "[3/5] 로컬에 생성된 파일 확인..."
 if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
