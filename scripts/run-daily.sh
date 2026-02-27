@@ -5,86 +5,63 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$BASE_DIR" || exit 1
 
+# 1. 환경 변수 로드 (GitHub Actions에서 생성한 .env)
 if [ -f .env ]; then
     set -a
-    # shellcheck disable=SC1091
     . .env
     set +a
 else
-    echo ".env 파일이 없습니다." >&2
+    echo "🚨 .env 파일이 없습니다." >&2
     exit 1
 fi
 
-
-# 한국 시간 기준으로 날짜 설정 (GitHub Actions의 기본 UTC 방지)
 export TZ="Asia/Seoul"
 DATE="$(date +%F)"
-mkdir -p "$BASE_DIR/output"
-LOCAL_OUTPUT_FILE="$BASE_DIR/output/${DATE}.md"
 
 if [[ -z "${TARGET_REPO_PATH:-}" ]]; then
   echo "🚨 .env 의 TARGET_REPO_PATH 환경 변수가 설정되어 있지 않습니다." >&2
   exit 1
 fi
 
-# Windows Git Bash 환경을 위한 경로 변환
-TARGET_REPO_PATH_RAW="$TARGET_REPO_PATH"
-if [[ "$TARGET_REPO_PATH_RAW" =~ ^([A-Za-z]):[/\\](.*) ]]; then
-  drive_letter="${BASH_REMATCH[1]}"
-  rest="${BASH_REMATCH[2]}"
-  rest="${rest//\\//}"                      
-  drive_letter_lower="${drive_letter,,}"    
-  TARGET_REPO_PATH="/mnt/${drive_letter_lower}/${rest}"
-else
-  TARGET_REPO_PATH="$TARGET_REPO_PATH_RAW"
-fi
-
+# 2. 타겟 경로 설정 (불필요한 Windows 경로 변환 제거)
 TARGET_DAILY_DIR="$TARGET_REPO_PATH/content/journal"
 TARGET_FILE_NAME="${DATE}_news.ko.md"
 TARGET_OUTPUT_FILE="$TARGET_DAILY_DIR/$TARGET_FILE_NAME"
 
-echo "[1/5] OpenClaw 뉴스 수집 및 요약 실행..."
+# 타겟 디렉토리가 없으면 미리 생성
+mkdir -p "$TARGET_DAILY_DIR"
 
+echo "[1/4] OpenClaw 뉴스 수집 및 요약 프롬프트 준비..."
 JOB_PROMPT=$(sed "s/{{date}}/$DATE/g" "$BASE_DIR/config/daily-news-job.yaml")
 
-FINAL_MESSAGE="다음 작업 명세서의 지시사항을 수행하고, 최종 결과물 마크다운을 반드시 다음 로컬 경로에 저장해줘: $LOCAL_OUTPUT_FILE
+# OpenClaw에게 '타겟 리포지토리' 경로로 바로 저장하라고 지시
+FINAL_MESSAGE="다음 작업 명세서의 지시사항을 수행하고, 최종 결과물 마크다운을 반드시 다음 경로에 저장해줘: $TARGET_OUTPUT_FILE
 
 [작업 명세서]
 $JOB_PROMPT"
 
-# 3. openclaw 실행 (환경에 맞게 실행 명령어 자동 탐색)
-if command -v openclaw &> /dev/null; then
+if command -v openclaw >/dev/null; then
     OPENCLAW_CMD="openclaw"
 else
     OPENCLAW_CMD="npx openclaw"
 fi
 
-echo "[2/5] 실행..."
-if command -v openclaw >/dev/null; then
-    OPENCLAW_CMD=openclaw
-else
-    OPENCLAW_CMD="npx openclaw"
-fi
+echo "[2/4] OpenClaw 실행 중..."
+# 수정됨: 가공된 $FINAL_MESSAGE를 명확히 전달
+$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
 
-# $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE"
-$OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "config/daily-news-job.yaml을 실행해 오늘자 뉴스 요약을 만들어줘. 날짜: $DATE. output/$DATE.md에 한국어로 저장해줘."
-
-echo "[3/5] 로컬에 생성된 파일 확인..."
-if [[ ! -f "$LOCAL_OUTPUT_FILE" ]]; then
-  echo "🚨 로컬 output 폴더에 오늘자 MD 파일이 생성되지 않았습니다." >&2
+echo "[3/4] 타겟 리포지토리에 생성된 파일 확인..."
+if [[ ! -f "$TARGET_OUTPUT_FILE" ]]; then
+  echo "🚨 결과물 파일이 생성되지 않았습니다: $TARGET_OUTPUT_FILE" >&2
   exit 1
 else
-  echo "✅ 로컬 파일 생성 확인됨: $LOCAL_OUTPUT_FILE"
+  echo "✅ 파일 생성 완료: $TARGET_OUTPUT_FILE"
 fi
 
-echo "[4/5] 블로그 리포지토리로 파일 복사..."
-mkdir -p "$TARGET_DAILY_DIR"
-cp -f "$LOCAL_OUTPUT_FILE" "$TARGET_OUTPUT_FILE"
-echo "✅ 파일 복사 완료: $TARGET_OUTPUT_FILE"
-
-echo "[5/5] GitHub 커밋 및 푸시..."
+echo "[4/4] GitHub 커밋 및 푸시..."
 cd "$TARGET_REPO_PATH"
 
+# 새로 생성된 파일을 Git에 추가
 git add "content/journal/$TARGET_FILE_NAME" || true
 
 if git diff --cached --quiet; then

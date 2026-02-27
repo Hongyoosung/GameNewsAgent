@@ -47,7 +47,7 @@ jobs:
           
           # 3. 'main' 에이전트 설정
           # 'main' 에이전트는 예약된 이름이므로 기존 에이전트에 모델을 강제로 설정합니다.
-          openclaw --no-color models --agent main set google/gemini-2.5-flash
+          openclaw --no-color models --agent main set google/gemini-3-pro-preview
           
           # 4. 설정 확인 (디버깅용)
           openclaw --no-color models status
