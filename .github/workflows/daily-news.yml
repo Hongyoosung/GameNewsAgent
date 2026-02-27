@@ -33,25 +33,31 @@ jobs:
       - name: Setup Environment & OpenClaw Auth
         working-directory: ./sourcerepo
         run: |
-          # 1. .env 파일 생성 (Target Repo 경로만 설정)
+          # 1. .env 파일 생성
           cat > .env << EOF
           GITHUB_TOKEN=${{ secrets.GH_PAT }}
           TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           EOF
           
-          # 2. OpenClaw 글로벌 설정 및 인증 프로필 설정
-          # openclaw scan은 OpenRouter 키를 요구하므로 생략합니다.
-          # --no-color를 사용하여 CI 로그에서 토큰이 문자로 노출되는 애니메이션 효과를 방지합니다.
+          # 2. OpenClaw 인증 설정
           echo "${{ secrets.GEMINI_API_KEY }}" | openclaw --no-color models --agent main auth paste-token --provider google
           
-          # 3. 'main' 에이전트 설정
-          # 'main' 에이전트는 예약된 이름이므로 기존 에이전트에 모델을 강제로 설정합니다.
+          # 3. 'main' 에이전트 모델 설정
           openclaw --no-color models --agent main set google/gemini-2.5-flash
           
-          # 4. 설정 확인 (디버깅용)
-          openclaw --no-color models status
-          openclaw --no-color models status --agent main
+          # 4. 스킬 관리
+          # 사용하지 않는 스킬 비활성화
+          openclaw --no-color skills disable 1password apple-notes discord slack weather healthcheck gemini
+          
+          # logwatcher, github, summarize, xurl 활성화
+          openclaw --no-color skills enable logwatcher github summarize xurl
+          
+          # 설정 반영을 위한 재시작
+          openclaw --no-color restart
+          
+          # 5. 설정 확인 (디버깅용)
+          openclaw --no-color skills list --eligible
 
 
 
