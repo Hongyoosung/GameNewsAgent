@@ -49,7 +49,7 @@ jobs:
         run: |
           mkdir -p ~/.openclaw
           
-          # 1. 네이티브 Gemini 규격으로 설정 파일 생성! (baseUrl 삭제, api 변경)
+          # 1. 네이티브 Gemini 규격으로 설정 파일 생성 (baseUrl 추가)
           cat > ~/.openclaw/openclaw.json << EOF
           {
             "models": {
@@ -58,6 +58,7 @@ jobs:
                 "google": {
                   "api": "google-generative-ai",
                   "apiKey": "${{ secrets.GEMINI_API_KEY }}",
+                  "baseUrl": "https://generativelanguage.googleapis.com",
                   "models": [
                     {
                       "id": "gemini-2.5-flash",
