@@ -46,21 +46,15 @@ jobs:
           # 3. 'main' 에이전트 모델 설정
           openclaw --no-color models --agent main set google/gemini-2.5-flash
           
-          # 4. 스킬 관리
-          for skill in 1password apple-notes discord slack weather healthcheck gemini coding-agent nano-banana-pro openai-whisper-api skill-creator video-frames; do
-            openclaw skills disable "$skill" || true
-          done
-          
-          for skill in blogwatcher github summarize xurl; do
-            openclaw skills enable "$skill" || true
-          done
+          # (제거됨) 4. 스킬 관리 - openclaw는 enable/disable 명령어를 지원하지 않습니다.
           
           # 설정 반영을 위한 재시작
           openclaw --no-color reset
           
-          # 5. 설정 확인 (디버깅용)
+          # 4. 설정 및 스킬 상태 확인 (디버깅용)
           openclaw --no-color models status
           openclaw --no-color models status --agent main
+          openclaw --no-color skills check  # <--- 스킬들이 잘 준비(ready)되었는지 확인하는 명령어 추가
 
 
 
