@@ -96,7 +96,7 @@ def extract_webpage_text(url: str) -> str:
         return ""
 
 def main():
-    print(f"🚀 [1/4] RSS 피드 수집 및 기사 선별 시작...")
+    print(f"🚀 [1/5] RSS 피드 수집 및 기사 선별 시작...")
     rss_entries = fetch_recent_rss_entries()
     
     if not rss_entries:
@@ -122,77 +122,109 @@ def main():
     selected_articles = json.loads(selected_links_json)
     print(f"    ✅ {len(selected_articles)}개의 기사 선별 완료.")
 
-    print(f"🚀 [2/4] 선별된 기사 본문 추출 및 요약...")
+    print(f"🚀 [2/5] 선별된 기사 본문 추출 및 요약 (영어로 진행)...")
     summaries = []
     for idx, article in enumerate(selected_articles):
         print(f"    📖 분석 중 ({idx+1}/{len(selected_articles)}): {article['title']}")
         content = extract_webpage_text(article['link'])
         
-        # 본문(content)이 403 에러로 비어있더라도, RSS 자체 요약(rss_summary)을 주어 유추하게 함
+        # 정보 손실 방지를 위해 요약 과정을 영어로 수행
         step2_prompt = f"""
-        다음 기사 내용을 분석하여 지정된 형식으로 요약하세요.
+        Analyze the following article content and summarize it in English using the specified format.
+        Focus strictly on the technical details relevant to game development and AI engineering.
         
-        제목: {article['title']}
-        링크: {article['link']}
-        RSS 기본 요약: {article.get('rss_summary', '')}
-        본문 내용: {content if content else "(본문을 가져오지 못했습니다. 제목과 링크, RSS 기본 요약을 기반으로 내용을 유추하세요.)"}
+        Title: {article['title']}
+        Link: {article['link']}
+        RSS Summary: {article.get('rss_summary', '')}
+        Content: {content if content else "(Could not fetch content. Infer based on the title, link, and RSS summary.)"}
         
-        형식:
-        #### 기사
-        링크: [{article['title']}]({article['link']})
-        요약: (핵심 기술 내용 1줄)
-        영향: (게임/AI 개발 영향 1줄)
+        Format:
+        #### Article
+        Link: [{article['title']}]({article['link']})
+        Summary: (1 sentence of core technical content)
+        Impact: (1 sentence on impact for Game/AI development)
         """
         summary = call_gemini(step2_prompt)
         summaries.append(summary)
     
-    print(f"🚀 [3/4] 최종 마크다운 블로그 포스트 생성...")
+    print(f"🚀 [3/5] 최종 마크다운 블로그 포스트 생성 (영문)...")
     combined_summaries = "\n\n".join(summaries)
-    step3_prompt = f"""
-    오늘 날짜는 {TODAY_STR}입니다.
     
-    다음 요약된 기사 데이터를 바탕으로 최종 블로그 포스트를 작성하세요.
-    타깃 독자: '게임 클라이언트 프로그래머' 및 'AI 엔지니어'.
+    step3_en_prompt = f"""
+    Today's date is {TODAY_STR}.
     
-    [출력 형식]
-    블로그 포스팅용 마크다운 본문만 출력. 추가 설명/코드블록(```markdown 등) 금지.
-    실제 기사 URL 링크 필수.
+    Based on the following summarized article data, write a final blog post in English.
+    Target audience: 'Game Client Programmers' and 'AI Engineers'.
+    
+    [Output Format]
+    Output ONLY the markdown body for the blog post. Do NOT include extra explanations or markdown code blocks (like ```markdown).
+    MUST include actual article URL links.
     
     ---
-    title: "[수집된 뉴스를 바탕으로 매력적인 제목 작성 - 예: {TODAY_STR} Unreal C++ 최적화 & LLM 트렌드]"
+    title: "[Write a catchy title based on the news - e.g., Unreal C++ Optimization & LLM Trends (Do not include date)]"
     date: {TODAY.strftime("%Y-%m-%dT09:00:00+09:00")}
     draft: false
-    description: "[핵심 기술 동향 2-3줄 요약 - 게임 개발/AI 실무 적용 포인트 중심]"
-    tags: ["News", "Game Programming", "AI Trends", "Tech"]
+    description: "[2-3 sentence summary of core tech trends - focus on game dev / AI practical applications]"
+    tags: ["Tag1", "Tag2", "Tag3"] # Max 3 tags
     categories: ["Tech"]
     ---
     
-    최신 게임 프로그래밍 및 AI 기술 동향을 전해드립니다.
+    Here are the latest trends in game programming and AI technology.
     
-    (이후 각 기사별로 아래 형식 유지)
-    #### 1. [실제 기사 제목](실제 링크 URL)
-    * **핵심 내용:** ...
-    * **기술적 의미:** ...
-    * **활용 방안:** ...
+    (Maintain the following format for each article)
+    ### 1. [Actual Article Title](Actual Link URL)
+    * **Core Content (2 lines):** ...
+    * **Technical Significance (2 lines):** ...
+    * **Practical Application (3 lines):** ...
+
+    ---
+
+    ### 2. [Actual Article Title](Actual Link URL)
     
-    [요약 데이터]
+    [Summarized Data]
     {combined_summaries}
     """
     
-    final_markdown = call_gemini(step3_prompt)
-    final_markdown = final_markdown.replace("```markdown\n", "").replace("```\n", "").strip()
+    final_markdown_en = call_gemini(step3_en_prompt)
+    final_markdown_en = final_markdown_en.replace("```markdown\n", "").replace("```\n", "").strip()
 
-    print(f"🚀 [4/4] 파일 저장 중...")
+    print(f"🚀 [4/5] 한글 버전 마크다운 번역 중 (전문가 톤앤매너 적용)...")
+    step4_ko_prompt = f"""
+    다음은 방금 작성된 영문 기술 블로그 마크다운 포스트입니다.
+    이 내용을 한국어 블로그 독자(게임 클라이언트 프로그래머 및 AI 엔지니어)가 자연스럽게 읽을 수 있도록 번역해주세요.
+
+    [번역 톤앤매너 가이드]
+    1. 문체: 도입부와 맺음말은 전문적이고 깔끔한 경어체(~합니다, ~습니다)를 사용하고, 각 기사의 요약 항목(핵심 내용, 기술적 의미, 활용 방안)은 간결한 명사형 또는 개조식(~함, ~임)으로 끝맺으세요.
+    2. 전문 용어: Rendering, Overhead, Fine-tuning, LLM 등 게임 및 AI 업계에서 흔히 쓰이는 기술 용어는 억지로 한국어로 번역하지 말고 영문 그대로 두거나 익숙한 업계 용어(음역)를 사용하세요.
+    3. 어조: 과장된 수식어를 배제하고 객관적이고 기술 중심적인 시각을 유지하세요.
+
+    마크다운 형식(Frontmatter 포함)과 링크는 그대로 유지하고, 본문 내용만 한국어로 번역하세요. Frontmatter의 title과 description도 한국어로 번역해주세요.
+    추가 설명이나 마크다운 코드 블록(```markdown 등) 기호는 절대 출력하지 마세요.
+
+    [영문 포스트]
+    {final_markdown_en}
+    """
+    
+    final_markdown_ko = call_gemini(step4_ko_prompt)
+    final_markdown_ko = final_markdown_ko.replace("```markdown\n", "").replace("```\n", "").strip()
+
+    print(f"🚀 [5/5] 파일 저장 중...")
     target_dir = os.path.join(TARGET_REPO_PATH, "content", "journal")
     os.makedirs(target_dir, exist_ok=True)
     
-    file_name = f"{TODAY_STR}_news.ko.md"
-    file_path = os.path.join(target_dir, file_name)
-    
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(final_markdown)
+    # 영문 문서 저장 (.md)
+    file_name_en = f"{TODAY_STR}_news.md"
+    file_path_en = os.path.join(target_dir, file_name_en)
+    with open(file_path_en, "w", encoding="utf-8") as f:
+        f.write(final_markdown_en)
         
-    print(f"🎉 성공적으로 생성되었습니다: {file_path}")
+    # 한글 문서 저장 (.ko.md)
+    file_name_ko = f"{TODAY_STR}_news.ko.md"
+    file_path_ko = os.path.join(target_dir, file_name_ko)
+    with open(file_path_ko, "w", encoding="utf-8") as f:
+        f.write(final_markdown_ko)
+        
+    print(f"🎉 성공적으로 두 버전이 생성되었습니다:\n  - {file_path_en}\n  - {file_path_ko}")
 
 if __name__ == "__main__":
     main()
