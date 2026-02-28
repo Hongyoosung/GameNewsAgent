@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$BASE_DIR" || exit 1
 
-# 1. 환경 변수 로드 (GitHub Actions에서 생성한 .env)
+# 1. 환경 변수 로드
 if [ -f .env ]; then
     set -a
     . .env
@@ -25,22 +23,12 @@ if [[ -z "${TARGET_REPO_PATH:-}" ]]; then
   exit 1
 fi
 
-# 2. 타겟 경로 설정 (불필요한 Windows 경로 변환 제거)
+# 2. 타겟 경로 설정
 TARGET_DAILY_DIR="$TARGET_REPO_PATH/content/journal"
 TARGET_FILE_NAME="${DATE}_news.ko.md"
 TARGET_OUTPUT_FILE="$TARGET_DAILY_DIR/$TARGET_FILE_NAME"
 
-# 타겟 디렉토리가 없으면 미리 생성
 mkdir -p "$TARGET_DAILY_DIR"
-
-echo "[1/4] OpenClaw 뉴스 수집 및 요약 프롬프트 준비..."
-JOB_PROMPT=$(sed "s/{{date}}/$DATE/g" "$BASE_DIR/config/daily-news-job.yaml")
-
-# OpenClaw에게 '타겟 리포지토리' 경로로 바로 저장하라고 지시
-FINAL_MESSAGE="다음 작업 명세서의 지시사항을 수행하여 마크다운 본문만 작성해줘:
-
-[작업 명세서]
-$JOB_PROMPT"
 
 if command -v openclaw >/dev/null; then
     OPENCLAW_CMD="openclaw"
@@ -48,37 +36,78 @@ else
     OPENCLAW_CMD="npx openclaw"
 fi
 
-echo "[2/4] OpenClaw 실행 중 (API 제한 대응 로직 포함)..."
+echo "[1/4] OpenClaw 3스텝 실행 중 (API 제한 대응 및 파이프라인 적용)..."
 
-max_api_retries=3
-api_retry_count=0
-api_success=false
+LINKS_FILE="$TARGET_DAILY_DIR/${DATE}_news-links.txt"
+SUMMARIES_FILE="$TARGET_DAILY_DIR/${DATE}_news-summaries.txt"
+FINAL_OUTPUT_FILE="$TARGET_OUTPUT_FILE"
 
-while [[ $api_retry_count -lt $max_api_retries && $api_success == false ]]; do
-    echo "시도 $((api_retry_count + 1))/$max_api_retries: OpenClaw 에이전트 구동..."
+# 단일 세션 ID 사용 (모든 스텝이 대화 문맥을 공유하도록)
+GLOBAL_SESSION_ID="daily-news-$DATE"
+
+run_step() {
+  local step_num=$1
+  local prompt_file=$2
+  local output_file=$3
+  local input_file=$4  # 이전 스텝 결과 파일 경로 (선택)
+  
+  # 프롬프트 기본 내용 로드 및 날짜 치환
+  local step_prompt=$(sed "s/{{date}}/$DATE/g" "$BASE_DIR/config/$prompt_file")
+
+  # 💡 [핵심] 이전 스텝의 결과물이 있다면 프롬프트 뒤에 명시적으로 첨부
+  if [[ -n "${input_file:-}" && -f "$input_file" ]]; then
+    local previous_result=$(cat "$input_file")
+    step_prompt="$step_prompt
+
+[이전 스텝 결과 데이터]
+$previous_result"
+  fi
+
+  local max_retries=3
+  local retry_count=0
+  local success=false
+
+  while [[ $retry_count -lt $max_retries && $success == false ]]; do
+    echo "  📋 스텝 $step_num 시도 $((retry_count + 1))/$max_retries: $prompt_file → $output_file"
     
-    # 실행 결과를 임시 파일에 저장하여 에러 여부 확인
-    if $OPENCLAW_CMD agent --local --agent main --session-id "news-$DATE" --message "$FINAL_MESSAGE" > "$TARGET_OUTPUT_FILE" 2>&1; then
-        # 출력 내용에 API 에러 메시지가 있는지 검사
-        if grep -qE "429|RESOURCE_EXHAUSTED|rate limit reached" "$TARGET_OUTPUT_FILE"; then
-            echo "⚠️ API 할당량 초과 감지. 60초 후 재시도합니다..."
-            api_retry_count=$((api_retry_count + 1))
-            sleep 62  # 1분 제한이므로 여유 있게 62초 대기
-        else
-            api_success=true
-            echo "✅ OpenClaw 실행 성공!"
-        fi
+    # GLOBAL_SESSION_ID로 통일하여 실행
+    if $OPENCLAW_CMD agent --local --agent main \
+      --session-id "$GLOBAL_SESSION_ID" \
+      --message "$step_prompt" \
+      > "$output_file" 2> "${output_file}.log"; then
+      
+      if grep -qE "429|RESOURCE_EXHAUSTED|rate limit reached|quota exceeded" "${output_file}.log"; then
+        echo "    ⚠️ API 할당량 초과 ($((retry_count + 1))회). 120초 후 재시도..."
+        retry_count=$((retry_count + 1))
+        sleep 122
+      else
+        echo "    ✅ 스텝 $step_num 성공!"
+        success=true
+      fi
     else
-        echo "⚠️ OpenClaw 실행 중 시스템 오류 발생. 60초 후 재시도합니다..."
-        api_retry_count=$((api_retry_count + 1))
-        sleep 62
+      echo "    ⚠️ 스텝 $step_num 시스템 오류. 로그 확인: ${output_file}.log"
+      retry_count=$((retry_count + 1))
+      sleep 122
     fi
-done
+  done
+  
+  if [[ $success == false ]]; then
+    echo "🚨 스텝 $step_num 최종 실패. 로그: ${output_file}.log" >&2
+    return 1
+  fi
+}
 
-if [[ $api_success == false ]]; then
-    echo "🚨 API 제한으로 인해 OpenClaw 실행에 최종 실패했습니다." >&2
-    exit 1
-fi
+# 💡 스텝 실행 시 이전 파일($LINKS_FILE, $SUMMARIES_FILE)을 파라미터로 넘겨줌
+# 스텝 1: RSS → 링크 목록 (입력 파일 없음)
+if ! run_step 1 "rss-links.yaml" "$LINKS_FILE" ""; then exit 1; fi
+
+# 스텝 2: 링크 → 요약 (스텝 1의 LINKS_FILE을 입력으로 사용)
+if ! run_step 2 "summarize.yaml" "$SUMMARIES_FILE" "$LINKS_FILE"; then exit 1; fi
+
+# 스텝 3: 요약 → 최종 MD (스텝 2의 SUMMARIES_FILE을 입력으로 사용)
+if ! run_step 3 "markdown.yaml" "$FINAL_OUTPUT_FILE" "$SUMMARIES_FILE"; then exit 1; fi
+
+echo "✅ 모든 스텝 완료! 최종 출력: $FINAL_OUTPUT_FILE"
 
 echo "[4/4] GitHub 커밋 및 푸시..."
 cd "$TARGET_REPO_PATH"

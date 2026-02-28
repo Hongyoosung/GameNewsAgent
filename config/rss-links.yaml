@@ -1,0 +1,18 @@
+task: "step1-rss-links"
+tools:
+- blogwatcher
+prompt: |
+오늘 날짜는 {{date}}입니다.
+
+1. 'blogwatcher'로 다음 RSS 읽기:
+- https://news.ycombinator.com/rss
+- https://www.reddit.com/r/MachineLearning/new/.rss
+
+2. 최근 24시간 내 '게임 프로그래밍/AI/ML 기술' 관련 기사 중 **최대 3개 링크만** 선별.
+   - Unreal/Unity 업데이트, LLM 논문, 그래픽스 최적화 등 기술 중심.
+   - 비즈니스/출시 소식 제외.
+
+3. 형식: 링크만 한 줄씩 출력 (제목+URL).
+예:
+https://example.com/ai-paper (AI 논문 제목)
+https://example.com/unreal-update (Unreal 5.4 업데이트)
