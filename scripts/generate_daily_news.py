@@ -1,13 +1,14 @@
 import os
 import sys
-import time
 import json
 import requests
 import feedparser
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+# 새로운 공식 SDK 사용
+from google import genai
+from google.genai import types
 
 # 1. 환경 변수 및 설정
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -20,40 +21,36 @@ if not GEMINI_API_KEY:
     print("🚨 GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
     sys.exit(1)
 
-genai.configure(api_key=GEMINI_API_KEY)
-# 최신 Flash 모델 사용 (Gemini 2.5 Flash)
-model = genai.GenerativeModel('gemini-2.5-flash')
+# 최신 genai 클라이언트 초기화
+client = genai.Client(api_key=GEMINI_API_KEY)
+MODEL_ID = 'gemini-2.5-flash'
 
-# 안전 필터 완화 (기술 문서 요약 시 오탐지 방지)
-safety_settings = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-}
+# 안전 필터 완화 (기술 문서 요약 시 오탐지 방지 - 새로운 SDK 방식)
+safety_settings = [
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+]
 
-def call_gemini_with_retry(prompt: str, is_json=False) -> str:
-    """API 호출 제한(429) 등에 대비한 넉넉한 재시도 로직"""
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            generation_config = {"response_mime_type": "application/json"} if is_json else {}
-            response = model.generate_content(
-                prompt,
-                safety_settings=safety_settings,
-                generation_config=generation_config
-            )
-            return response.text
-        except Exception as e:
-            error_msg = str(e)
-            print(f"    ⚠️ Gemini API 호출 오류 (시도 {attempt + 1}/{max_retries}): {error_msg}")
-            if attempt < max_retries - 1:
-                # 429 에러 발생 시 아주 넉넉하게 65초 대기 (안전 확보)
-                sleep_time = 65 if "429" in error_msg else 30 * (attempt + 1)
-                print(f"    ⏳ {sleep_time}초 대기 후 재시도합니다...")
-                time.sleep(sleep_time)
-            else:
-                raise
+def call_gemini(prompt: str, is_json=False) -> str:
+    """결제 계정 연동 상태이므로, 대기열(Sleep) 없이 즉각 호출합니다."""
+    config_args = {"safety_settings": safety_settings}
+    if is_json:
+        config_args["response_mime_type"] = "application/json"
+        
+    config = types.GenerateContentConfig(**config_args)
+    
+    try:
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt,
+            config=config
+        )
+        return response.text
+    except Exception as e:
+        print(f"    ⚠️ Gemini API 호출 오류: {e}")
+        raise
 
 def fetch_recent_rss_entries() -> list:
     """최근 24시간 이내의 RSS 피드 수집"""
@@ -68,7 +65,6 @@ def fetch_recent_rss_entries() -> list:
         print(f"  📥 RSS 파싱 중: {url}")
         feed = feedparser.parse(url)
         for entry in feed.entries:
-            # RSS 발행 시간 확인 (없는 경우 현재 시간으로 간주)
             published_tuple = entry.get('published_parsed', entry.get('updated_parsed'))
             if published_tuple:
                 published_dt = datetime(*published_tuple[:6], tzinfo=timezone.utc)
@@ -76,26 +72,27 @@ def fetch_recent_rss_entries() -> list:
                     entries.append({
                         "title": entry.title,
                         "link": entry.link,
-                        "summary": entry.get('summary', '')[:200] # 요약본 일부만
+                        # 본문 추출 실패 시 대비하여 RSS 내 요약본도 수집 (최대 500자)
+                        "summary": entry.get('summary', '')[:500] 
                     })
     return entries
 
 def extract_webpage_text(url: str) -> str:
-    """URL에서 본문 텍스트 추출 (OpenClaw의 xurl 역할 대체)"""
+    """URL에서 본문 텍스트 추출 (Reddit 403 방지를 위해 User-Agent 강화)"""
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        # 일반 크롬 브라우저처럼 위장
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # 불필요한 태그 제거
         for script in soup(["script", "style", "nav", "footer", "header"]):
             script.extract()
             
         text = soup.get_text(separator=' ', strip=True)
-        return text[:3000] # 토큰 제한을 위해 앞부분 3000자만 추출
+        return text[:3000]
     except Exception as e:
-        print(f"    ⚠️ {url} 본문 추출 실패: {e}")
+        print(f"    ⚠️ 본문 추출 실패 (RSS 요약본으로 대체됨): {e}")
         return ""
 
 def main():
@@ -106,22 +103,22 @@ def main():
         print("🚨 최근 24시간 내의 기사가 없습니다.")
         sys.exit(0)
 
-    # Step 1: 기사 선별 (JSON 응답 강제)
+    # 요청 사항: 최대 5개 기사 선별
     rss_text = "\n".join([f"- 제목: {e['title']}\n  링크: {e['link']}\n  요약: {e['summary']}" for e in rss_entries])
     step1_prompt = f"""
     다음은 최근 수집된 뉴스 기사 목록입니다.
-    이 중에서 '게임 프로그래밍' 및 'AI/ML 기술'과 관련된 가장 중요한 기사를 **최대 3개만** 선별해주세요.
+    이 중에서 '게임 프로그래밍' 및 'AI/ML 기술'과 관련된 가장 중요한 기사를 **최대 5개** 선별해주세요.
     Unreal/Unity 업데이트, LLM 논문, 그래픽스 최적화 등 기술 중심이어야 하며, 단순 비즈니스나 게임 출시 소식은 제외하세요.
     
     반드시 아래 JSON 형식의 배열로만 응답하세요:
     [
-      {{"title": "기사 제목", "link": "기사 URL"}}, ...
+      {{"title": "기사 제목", "link": "기사 URL", "rss_summary": "수집된 요약 내용"}}, ...
     ]
     
     기사 목록:
     {rss_text}
     """
-    selected_links_json = call_gemini_with_retry(step1_prompt, is_json=True)
+    selected_links_json = call_gemini(step1_prompt, is_json=True)
     selected_articles = json.loads(selected_links_json)
     print(f"    ✅ {len(selected_articles)}개의 기사 선별 완료.")
 
@@ -131,12 +128,14 @@ def main():
         print(f"    📖 분석 중 ({idx+1}/{len(selected_articles)}): {article['title']}")
         content = extract_webpage_text(article['link'])
         
+        # 본문(content)이 403 에러로 비어있더라도, RSS 자체 요약(rss_summary)을 주어 유추하게 함
         step2_prompt = f"""
         다음 기사 내용을 분석하여 지정된 형식으로 요약하세요.
         
         제목: {article['title']}
         링크: {article['link']}
-        본문 내용: {content if content else "(본문을 가져오지 못했습니다. 제목과 링크 기반으로 유추하세요.)"}
+        RSS 기본 요약: {article.get('rss_summary', '')}
+        본문 내용: {content if content else "(본문을 가져오지 못했습니다. 제목과 링크, RSS 기본 요약을 기반으로 내용을 유추하세요.)"}
         
         형식:
         #### 기사
@@ -144,13 +143,8 @@ def main():
         요약: (핵심 기술 내용 1줄)
         영향: (게임/AI 개발 영향 1줄)
         """
-        summary = call_gemini_with_retry(step2_prompt)
+        summary = call_gemini(step2_prompt)
         summaries.append(summary)
-        
-        # 마지막 기사가 아니라면, API 호출 제한 방지를 위해 15초 대기
-        if idx < len(selected_articles) - 1:
-            print("    ⏳ 다음 요약 전 API 한도 방지를 위해 15초 대기합니다...")
-            time.sleep(15)
     
     print(f"🚀 [3/4] 최종 마크다운 블로그 포스트 생성...")
     combined_summaries = "\n\n".join(summaries)
@@ -185,9 +179,7 @@ def main():
     {combined_summaries}
     """
     
-    final_markdown = call_gemini_with_retry(step3_prompt)
-    
-    # 마크다운 코드블록 마커가 섞여 들어올 경우 제거
+    final_markdown = call_gemini(step3_prompt)
     final_markdown = final_markdown.replace("```markdown\n", "").replace("```\n", "").strip()
 
     print(f"🚀 [4/4] 파일 저장 중...")
