@@ -1,10 +1,8 @@
-# .github/workflows/daily-news.yml (전체 코드 중 steps 부분 수정)
-
 name: Daily News Automation
 on:
   schedule:
     - cron: '0 0 * * *'  # UTC 00:00 -> KST 09:00
-  workflow_dispatch:  # 수동 실행 버튼 활성화
+  workflow_dispatch:
 
 jobs:
   run-daily-news:
@@ -22,50 +20,42 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           path: targetrepo
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '22'
-      
-      - name: Install OpenClaw
-        run: npm install -g openclaw@latest
-      
-      - name: Install OpenClaw & Required Skills
+          python-version: '3.11'
+          
+      - name: Install Python Dependencies
         run: |
-          npm install -g openclaw@latest
+          python -m pip install --upgrade pip
+          pip install feedparser google-generativeai requests beautifulsoup4
           
-          # clawhub를 사용하여 누락된 스킬 패키지들 설치
-          npx clawhub install blogwatcher
-          npx clawhub install xurl
-          npx clawhub install summarize
-          
-      - name: Setup Environment & OpenClaw Auth
+      - name: Run Daily Script (Python)
         working-directory: ./sourcerepo
-        run: |
-          # 1. .env 파일 생성
-          cat > .env << EOF
-          GITHUB_TOKEN=${{ secrets.GH_PAT }}
-          TARGET_REPO_PATH=${{ github.workspace }}/targetrepo
-          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          EOF
-          
-          # 2. OpenClaw 인증 설정
-          echo "${{ secrets.GEMINI_API_KEY }}" | openclaw --no-color models --agent main auth paste-token --provider google
-          
-          # 3. 'main' 에이전트 모델 설정
-          openclaw --no-color models --agent main set google/gemini-2.5-flash
-          
-          openclaw --no-color reset
-          
-          # 4. 스킬 상태 최종 확인
-          openclaw --no-color skills check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          TARGET_REPO_PATH: ${{ github.workspace }}/targetrepo
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Configure Git for Target Repo
+        run: python scripts/generate_daily_news.py
+      
+      - name: Commit and Push to Target Repo
         working-directory: ./targetrepo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-      - name: Run Daily Script
-        working-directory: ./sourcerepo
-        run: bash scripts/run-daily.sh
+          
+          # journal 폴더 내의 변경사항 추가
+          git add "content/journal/*" || true
+          
+          if git diff --cached --quiet; then
+            echo "변경 사항이 없어 커밋/푸시를 건너뜁니다."
+            exit 0
+          fi
+          
+          git commit -m "docs: Daily News Update $(date +'%Y-%m-%d')"
+          
+          # 재시도 로직이 포함된 푸시
+          for i in 1 2 3; do
+            git push origin main && break || sleep 5
+          done
