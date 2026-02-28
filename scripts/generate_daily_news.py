@@ -33,7 +33,7 @@ safety_settings = {
 }
 
 def call_gemini_with_retry(prompt: str, is_json=False) -> str:
-    """API 호출 제한(429) 등에 대비한 재시도 로직"""
+    """API 호출 제한(429) 등에 대비한 넉넉한 재시도 로직"""
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -45,9 +45,13 @@ def call_gemini_with_retry(prompt: str, is_json=False) -> str:
             )
             return response.text
         except Exception as e:
-            print(f"    ⚠️ Gemini API 호출 오류 (시도 {attempt + 1}/{max_retries}): {e}")
+            error_msg = str(e)
+            print(f"    ⚠️ Gemini API 호출 오류 (시도 {attempt + 1}/{max_retries}): {error_msg}")
             if attempt < max_retries - 1:
-                time.sleep(30 * (attempt + 1)) # 30초, 60초 대기
+                # 429 에러 발생 시 아주 넉넉하게 65초 대기 (안전 확보)
+                sleep_time = 65 if "429" in error_msg else 30 * (attempt + 1)
+                print(f"    ⏳ {sleep_time}초 대기 후 재시도합니다...")
+                time.sleep(sleep_time)
             else:
                 raise
 
@@ -123,8 +127,8 @@ def main():
 
     print(f"🚀 [2/4] 선별된 기사 본문 추출 및 요약...")
     summaries = []
-    for article in selected_articles:
-        print(f"    📖 분석 중: {article['title']}")
+    for idx, article in enumerate(selected_articles):
+        print(f"    📖 분석 중 ({idx+1}/{len(selected_articles)}): {article['title']}")
         content = extract_webpage_text(article['link'])
         
         step2_prompt = f"""
@@ -142,6 +146,11 @@ def main():
         """
         summary = call_gemini_with_retry(step2_prompt)
         summaries.append(summary)
+        
+        # 마지막 기사가 아니라면, API 호출 제한 방지를 위해 15초 대기
+        if idx < len(selected_articles) - 1:
+            print("    ⏳ 다음 요약 전 API 한도 방지를 위해 15초 대기합니다...")
+            time.sleep(15)
     
     print(f"🚀 [3/4] 최종 마크다운 블로그 포스트 생성...")
     combined_summaries = "\n\n".join(summaries)
