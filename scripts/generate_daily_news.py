@@ -128,23 +128,23 @@ def main():
     # 요청 사항: 최대 5개 기사 선별
     rss_text = "\n".join([f"- 제목: {e['title']}\n  링크: {e['link']}\n  요약: {e['summary']}" for e in rss_entries])
     step1_prompt = f"""
-    다음은 최근 수집된 뉴스 기사 목록입니다.
-    이 중에서 '게임 프로그래밍' 및 'AI/ML 기술'과 관련된 가장 중요한 기사를 **최대 5개** 선별해주세요.
-    Unreal/Unity 업데이트, LLM 논문, 그래픽스 최적화 등 기술 중심이어야 하며, 단순 비즈니스나 게임 출시 소식은 제외하세요.
-    
-    반드시 아래 JSON 형식의 배열로만 응답하세요:
+    Below is a list of recently collected news articles.
+    Please select **up to 5** of the most important articles related to "Game Programming" and "AI/ML Technology."
+    These articles should be technically focused, such as Unreal/Unity updates, LLM theses, and graphics optimization, and should not include simple business or game release news.
+
+    Please respond only as an array in JSON format:
     [
-      {{"title": "기사 제목", "link": "기사 URL", "rss_summary": "수집된 요약 내용"}}, ...
+    {{"title": "Article Title", "link": "Article URL", "rss_summary": "Collected Summary"}}, ...
     ]
-    
-    기사 목록:
+
+    Article List:
     {rss_text}
     """
     selected_links_json = call_gemini(step1_prompt, is_json=True)
     selected_articles = json.loads(selected_links_json)
     print(f"    ✅ {len(selected_articles)}개의 기사 선별 완료.")
 
-    print(f"🚀 [2/5] 선별된 기사 본문 추출 및 요약 (영어로 진행)...")
+    print(f"🚀 [2/5] 선별된 기사 본문 추출 및 요약")
     summaries = []
     for idx, article in enumerate(selected_articles):
         print(f"    📖 분석 중 ({idx+1}/{len(selected_articles)}): {article['title']}")
@@ -171,7 +171,7 @@ def main():
     print(f"🚀 [3/5] 최종 마크다운 블로그 포스트 생성 (영문)...")
     combined_summaries = "\n\n".join(summaries)
     
-    # 수정됨: 출력 포맷에서 (2 lines) 등의 문구 제거, 프롬프트 지시사항으로 길이 제한 명시
+    # 출력 포맷에서 (2 lines) 등의 문구 제거, 프롬프트 지시사항으로 길이 제한 명시
     step3_en_prompt = f"""
     Today's date is {TODAY_STR}.
     
