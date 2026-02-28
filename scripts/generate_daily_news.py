@@ -3,6 +3,7 @@ import sys
 import json
 import requests
 import feedparser
+import re # 정규표현식 모듈 추가
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
 
@@ -32,6 +33,16 @@ safety_settings = [
     types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
     types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
 ]
+
+def clean_generated_text(text: str) -> str:
+    """AI가 생성한 텍스트에서 불필요한 레딧 태그([P], [R] 등)와 길이 가이드 문구를 제거합니다."""
+    if not text:
+        return text
+    # 1. [P], [R], [D] 등의 태그 제거 (주로 Reddit 출처)
+    cleaned_text = re.sub(r'\[[A-Z]{1,2}\]\s*', '', text)
+    # 2. 만약을 대비해 (2 lines) 같은 패턴 제거
+    cleaned_text = re.sub(r'\s*\(\d+\s*lines?\)', '', cleaned_text)
+    return cleaned_text
 
 def call_gemini(prompt: str, is_json=False) -> str:
     """결제 계정 연동 상태이므로, 대기열(Sleep) 없이 즉각 호출합니다."""
@@ -128,7 +139,6 @@ def main():
         print(f"    📖 분석 중 ({idx+1}/{len(selected_articles)}): {article['title']}")
         content = extract_webpage_text(article['link'])
         
-        # 정보 손실 방지를 위해 요약 과정을 영어로 수행
         step2_prompt = f"""
         Analyze the following article content and summarize it in English using the specified format.
         Focus strictly on the technical details relevant to game development and AI engineering.
@@ -150,6 +160,7 @@ def main():
     print(f"🚀 [3/5] 최종 마크다운 블로그 포스트 생성 (영문)...")
     combined_summaries = "\n\n".join(summaries)
     
+    # 수정됨: 출력 포맷에서 (2 lines) 등의 문구 제거, 프롬프트 지시사항으로 길이 제한 명시
     step3_en_prompt = f"""
     Today's date is {TODAY_STR}.
     
@@ -159,6 +170,7 @@ def main():
     [Output Format]
     Output ONLY the markdown body for the blog post. Do NOT include extra explanations or markdown code blocks (like ```markdown).
     MUST include actual article URL links.
+    Remove any tags like [P], [R], [D] from the article titles.
     
     ---
     title: "[Write a catchy title based on the news - e.g., Unreal C++ Optimization & LLM Trends (Do not include date)]"
@@ -171,15 +183,15 @@ def main():
     
     Here are the latest trends in game programming and AI technology.
     
-    (Maintain the following format for each article)
-    ### 1. [Actual Article Title](Actual Link URL)
-    * **Core Content (2 lines):** ...
-    * **Technical Significance (2 lines):** ...
-    * **Practical Application (3 lines):** ...
+    (Maintain the following format for each article. Keep the descriptions concise, around 2-3 sentences each)
+    ### 1. [Actual Article Title Without Tags](Actual Link URL)
+    * **Core Content:** ...
+    * **Technical Significance:** ...
+    * **Practical Application:** ...
 
     ---
 
-    ### 2. [Actual Article Title](Actual Link URL)
+    ### 2. [Actual Article Title Without Tags](Actual Link URL)
     
     [Summarized Data]
     {combined_summaries}
@@ -187,6 +199,9 @@ def main():
     
     final_markdown_en = call_gemini(step3_en_prompt)
     final_markdown_en = final_markdown_en.replace("```markdown\n", "").replace("```\n", "").strip()
+    
+    # 정제 함수 적용
+    final_markdown_en = clean_generated_text(final_markdown_en)
 
     print(f"🚀 [4/5] 한글 버전 마크다운 번역 중 (전문가 톤앤매너 적용)...")
     step4_ko_prompt = f"""
@@ -207,6 +222,9 @@ def main():
     
     final_markdown_ko = call_gemini(step4_ko_prompt)
     final_markdown_ko = final_markdown_ko.replace("```markdown\n", "").replace("```\n", "").strip()
+    
+    # 정제 함수 한번 더 적용 (번역 과정에서 생길 수 있는 오류 방지)
+    final_markdown_ko = clean_generated_text(final_markdown_ko)
 
     print(f"🚀 [5/5] 파일 저장 중...")
     target_dir = os.path.join(TARGET_REPO_PATH, "content", "journal")
