@@ -35,13 +35,24 @@ safety_settings = [
 ]
 
 def clean_generated_text(text: str) -> str:
-    """AI가 생성한 텍스트에서 불필요한 레딧 태그([P], [R] 등)와 길이 가이드 문구를 제거합니다."""
+    """AI가 생성한 텍스트에서 불필요한 태그를 제거하고 깨진 마크다운을 복구합니다."""
     if not text:
         return text
-    # 1. [P], [R], [D] 등의 태그 제거 (주로 Reddit 출처)
+        
+    # 1. [P], [R] 등의 말머리 태그 제거
     cleaned_text = re.sub(r'\[[A-Z]{1,2}\]\s*', '', text)
-    # 2. 만약을 대비해 (2 lines) 같은 패턴 제거
+    
+    # 2. (2 lines) 같은 가이드 문구 제거
     cleaned_text = re.sub(r'\s*\(\d+\s*lines?\)', '', cleaned_text)
+    
+    # 3. 깨진 마크다운 링크 자동 복구 
+    cleaned_text = re.sub(
+        r'^(?:###\s*)?(\d+)\.\s*([^\[\n]+?)\s*\((https?://[^\)]+)\)',
+        r'### \1. [\2](\3)',
+        cleaned_text,
+        flags=re.MULTILINE
+    )
+    
     return cleaned_text
 
 def call_gemini(prompt: str, is_json=False) -> str:
