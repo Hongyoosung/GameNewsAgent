@@ -30,6 +30,15 @@ jobs:
       - name: Install OpenClaw
         run: npm install -g openclaw@latest
       
+      - name: Install OpenClaw & Required Skills
+        run: |
+          npm install -g openclaw@latest
+          
+          # clawhub를 사용하여 누락된 스킬 패키지들 설치
+          npx clawhub install blogwatcher
+          npx clawhub install xurl
+          npx clawhub install summarize
+          
       - name: Setup Environment & OpenClaw Auth
         working-directory: ./sourcerepo
         run: |
@@ -46,18 +55,10 @@ jobs:
           # 3. 'main' 에이전트 모델 설정
           openclaw --no-color models --agent main set google/gemini-2.5-flash
           
-          # (제거됨) 4. 스킬 관리 - openclaw는 enable/disable 명령어를 지원하지 않습니다.
-          
-          # 설정 반영을 위한 재시작
           openclaw --no-color reset
           
-          # 4. 설정 및 스킬 상태 확인 (디버깅용)
-          openclaw --no-color models status
-          openclaw --no-color models status --agent main
-          openclaw --no-color skills check  # <--- 스킬들이 잘 준비(ready)되었는지 확인하는 명령어 추가
-
-
-
+          # 4. 스킬 상태 최종 확인
+          openclaw --no-color skills check
 
       - name: Configure Git for Target Repo
         working-directory: ./targetrepo
