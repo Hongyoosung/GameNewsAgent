@@ -124,120 +124,77 @@ def extract_webpage_text(url: str) -> str:
         return ""
 
 def main():
-    print(f"🚀 [1/5] 고품질 기술 기사 선별 시작...")
+    print(f"🚀 [1/5] 기사 수집 및 선별...")
     rss_entries = fetch_recent_rss_entries()
-    
     if not rss_entries:
-        print("🚨 최근 24시간 내 수집된 기사가 없습니다.")
-        sys.exit(0)
+        print("🚨 신규 기사 없음"); sys.exit(0)
 
-    rss_text = "\n".join([f"- 제목: {e['title']}\n  링크: {e['link']}\n  요약: {e['summary']}" for e in rss_entries])
-    
-    # 기술적 깊이(Low-level, Math, Optimization)를 강조한 선별 프롬프트
-    step1_prompt = f"""
-    Analyze the following technical articles and select the TOP 10 most significant for 'Game Client Programmers' and 'AI Engineers'.
-    
-    Selection Criteria:
-    1. Technical depth: Focus on C++, GPU architecture, SIMD, Shaders, or LLM internals (Quantization, RAG, Training).
-    2. Innovation: New papers from ArXiv or Hugging Face.
-    3. Practicality: Real-world optimization or engineering patterns.
-    4. Exclude: General business news, simple game reviews, or high-level industry gossip.
+    rss_text = "\n".join([f"- {e['title']}\n  {e['link']}" for e in rss_entries])
+    step1_prompt = f"Select TOP 5 technical articles for Game/AI Engineers. Avoid business news. Return JSON only: [{{'title': '...', 'link': '...'}}]. Articles:\n{rss_text}"
+    selected_articles = json.loads(call_gemini(step1_prompt, is_json=True))
 
-    Respond ONLY as a JSON array:
-    [
-      {{"title": "Article Title", "link": "URL", "rss_summary": "Summary"}}, ...
-    ]
-
-    Articles:
-    {rss_text}
-    """
-    
-    try:
-        selected_links_json = call_gemini(step1_prompt, is_json=True)
-        selected_articles = json.loads(selected_links_json)
-    except Exception as e:
-        print(f"🚨 기사 선별 중 오류 발생: {e}")
-        sys.exit(1)
-        
-    print(f"    ✅ {len(selected_articles)}개의 핵심 기사 선정 완료.")
-
-    print(f"🚀 [2/5] 심층 기술 분석 및 요약")
+    print(f"🚀 [2/5] 기사 분석 및 요약...")
     summaries = []
-    for idx, article in enumerate(selected_articles):
-        print(f"    📖 분석 중 ({idx+1}/{len(selected_articles)}): {article['title']}")
+    for article in selected_articles:
         content = extract_webpage_text(article['link'])
-        
-        step2_prompt = f"""
-        Provide a deep technical summary for a senior developer audience.
+        step2_prompt = f"""Summarize this for a Senior Engineer. 
+        Focus: Core Mechanism, Performance Impact, Practical Application.
         Title: {article['title']}
-        Link: {article['link']}
-        Content: {content if content else "(Use RSS summary and title for context)"}
-        
+        Content: {content if content else 'N/A'}
         Format:
-        #### Article
-        Link: [{article['title']}]({article['link']})
-        Summary: (One sentence on the core technical mechanism)
-        Impact: (One sentence on how this changes game rendering or AI performance)
+        ### [Title Without Tags]({article['link']})
+        * **Core Content:** ...
+        * **Technical Significance:** ...
+        * **Practical Application:** ...
         """
-        summary = call_gemini(step2_prompt)
-        summaries.append(summary)
-    
-    print(f"🚀 [3/5] 최종 영문 마크다운 포스트 생성...")
-    combined_summaries = "\n\n".join(summaries)
+        summaries.append(call_gemini(step2_prompt))
+
+    print(f"🚀 [3/5] 영문 마크다운 생성 (도입부 제거 및 서식 적용)...")
+    # 구분선(---)으로 기사 결합
+    combined_summaries = "\n\n---\n\n".join(summaries)
     
     step3_en_prompt = f"""
-    Today's date is {TODAY_STR}. Write a professional technical blog post.
-    Target: Senior Software Engineers.
+    Write a technical blog post. 
+    - Do NOT include any introductory or concluding remarks.
+    - Start immediately with the first article.
+    - The 'title' in frontmatter must be technical and specific (No generic prefixes like 'Daily Update' or 'Tech Unpacked').
     
-    [Output Format]
+    [Format]
     ---
-    title: "[Catchy Technical Title]"
+    title: "[Technical Title Based on Content]"
     date: {TODAY.strftime("%Y-%m-%dT09:00:00+09:00")}
     draft: false
-    description: "[2-3 sentence technical overview]"
-    tags: ["Tech", "Engineering", "AI"]
+    description: "[Concise 2-sentence tech summary]"
+    tags: ["Tech", "AI", "GameDev"]
     categories: ["Tech"]
     ---
-    
-    ### Latest Trends in Game & AI Engineering
-    
-    (For each article below, expand into 3 points: Core Content, Technical Significance, and Practical Application. Keep it concise.)
-    
+
     {combined_summaries}
     """
-    
-    final_markdown_en = call_gemini(step3_en_prompt).replace("```markdown", "").replace("```", "").strip()
-    final_markdown_en = clean_generated_text(final_markdown_en)
+    final_markdown_en = clean_generated_text(call_gemini(step3_en_prompt))
 
-    print(f"🚀 [4/5] 한글 버전 전문가 번역...")
+    print(f"🚀 [4/5] 한글 버전 번역 (제목 포함 전문 번역)...")
     step4_ko_prompt = f"""
-    Translate the following technical blog post into Korean.
+    Translate this technical post into Korean.
+    - IMPORTANT: Translate the 'title' and 'description' in the Frontmatter into Korean.
+    - IMPORTANT: Do NOT include any introductory text like '게임 및 AI 엔지니어링 동향...'.
+    - Keep the technical terms (Rendering, LLM, etc.) and the structure (including '---' separators) exactly as they are.
     
-    [Guidelines]
-    1. Tone: Professional and formal (~합니다). Use bullet points for technical details.
-    2. Terminology: Keep industry terms like 'Rendering', 'Pipeline', 'Inference', 'Latency', 'Fine-tuning' as is (or transliterate if appropriate).
-    3. Maintain all Markdown Frontmatter and links exactly.
-
     [English Post]
     {final_markdown_en}
     """
-    
-    final_markdown_ko = call_gemini(step4_ko_prompt).replace("```markdown", "").replace("```", "").strip()
-    final_markdown_ko = clean_generated_text(final_markdown_ko)
+    final_markdown_ko = clean_generated_text(call_gemini(step4_ko_prompt))
 
-    print(f"🚀 [5/5] 파일 저장 중...")
+    print(f"🚀 [5/5] 저장 중...")
     target_dir = os.path.join(TARGET_REPO_PATH, "content", "journal")
     os.makedirs(target_dir, exist_ok=True)
     
-    # 영문 저장
     with open(os.path.join(target_dir, f"{TODAY_STR}_news.md"), "w", encoding="utf-8") as f:
         f.write(final_markdown_en)
-        
-    # 한글 저장
     with open(os.path.join(target_dir, f"{TODAY_STR}_news.ko.md"), "w", encoding="utf-8") as f:
         f.write(final_markdown_ko)
         
-    print(f"🎉 성공적으로 저장되었습니다: {target_dir}")
+    print(f"🎉 완료: {TODAY_STR}_news.ko.md")
 
 if __name__ == "__main__":
     main()
